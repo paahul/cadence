@@ -85,9 +85,10 @@ export function SignInForm() {
         <div className="flex w-full flex-col gap-2 rounded-lg border border-accent bg-accent-tint px-5 py-4 text-sm text-accent-strong">
           <div className="font-medium text-ink">Check your inbox</div>
           <div className="text-[13px] leading-5 text-ink-2">
-            We sent a sign-in link to{" "}
-            <span className="font-medium text-ink">{email}</span>. Tap the link
-            in the email, or paste the 6-digit code from the email below.
+            We sent a sign-in code to{" "}
+            <span className="font-medium text-ink">{email}</span>. Paste the
+            6-digit code from the email below — or tap the backup link in the
+            email if it&rsquo;s easier.
           </div>
         </div>
 
@@ -163,7 +164,7 @@ export function SignInForm() {
         disabled={status === "sending" || !email}
         className="rounded-lg bg-accent px-4 py-3 text-[15px] font-medium text-card transition-colors hover:bg-accent-strong disabled:opacity-40"
       >
-        {status === "sending" ? "Sending…" : "Email me a sign-in link"}
+        {status === "sending" ? "Sending…" : "Email me a sign-in code"}
       </button>
       {errorMessage ? (
         <div className="rounded-md border border-record bg-record-tint px-4 py-3 text-sm text-record">
@@ -171,8 +172,8 @@ export function SignInForm() {
         </div>
       ) : null}
       <div className="mt-1 text-xs leading-5 text-muted">
-        No password needed. We email you a link and a 6-digit code — use
-        whichever works.
+        No password needed. We email you a 6-digit code (and a link, as a
+        backup).
       </div>
     </form>
   );
