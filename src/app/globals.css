@@ -102,3 +102,33 @@ body {
   letter-spacing: -0.01em;
   color: var(--color-ink);
 }
+
+/* Processing waveform — three thin vertical bars that breathe while
+   analysis is running. Used inside the recorder button shell after stop. */
+@keyframes cadence-pulse-bar {
+  0%, 100% { transform: scaleY(0.3); }
+  50% { transform: scaleY(1); }
+}
+
+.cadence-pulse-bar {
+  display: inline-block;
+  width: 6px;
+  background: var(--color-accent);
+  border-radius: 3px;
+  transform-origin: center;
+  animation: cadence-pulse-bar 1.2s ease-in-out infinite;
+}
+
+.cadence-pulse-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  animation: cadence-pulse-dot 1.4s ease-in-out infinite;
+}
+
+@keyframes cadence-pulse-dot {
+  0%, 100% { opacity: 0.35; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1.15); }
+}

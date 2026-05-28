@@ -40,12 +40,16 @@ export function AnalysisView({
   const entries = getDimensionEntries(analysis);
   const focus = pickFocus(entries);
 
+  const otherEntries = focus
+    ? entries.filter((e) => e.dim.id !== focus.dim.id)
+    : entries;
+
   return (
     <div className="flex w-full max-w-md flex-col gap-4">
       {focus ? <FocusCard entry={focus} /> : null}
 
       <div className="flex flex-col gap-3">
-        {entries.map(({ dim, data }) => (
+        {otherEntries.map(({ dim, data }) => (
           <DimensionCard key={dim.id} dim={dim} data={data} />
         ))}
       </div>
