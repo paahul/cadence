@@ -122,7 +122,33 @@ A milestone-sequenced plan for shipping Cadence v1. The principle is **end-to-en
 
 **Estimated effort:** 2–3 weekends — auth alone is a chunk, and the RLS/data-model migration deserves care.
 
-### M5.5 — Background analysis queue (remove the 2-min cap)
+### M6 — Whisper-derived audio signals (Pace + Pronunciation Clarity)
+
+**Deliverable:** Two new dimensions that finally let Cadence analyze the *speech*, not just the transcript. Addresses real friend feedback that v1 only reads what was said, not how it was said.
+
+**Why this is next:** Friend feedback (verbatim): *"ye speech padta hai bas, thoda intonation and voice pe bi feedback deni chaiye and pronunciation. it analyses transcript, it should analyse the speech too."* Fair critique. Lowest-cost path to addressing it is to use signals we're already paying for and currently discarding — Whisper's `verbose_json` response includes per-word timestamps and per-word log-probabilities. No new service, no new infra. Just a different `response_format` parameter and some downstream computation.
+
+**Components:**
+- Change Whisper call to `response_format=verbose_json` (same model, same cost, richer output)
+- Extract from the response:
+  - Per-word timestamps → words-per-minute, pause distribution, sentence-end durations
+  - Per-word `logprob` → confidence-of-recognition per word as a pronunciation-clarity proxy
+  - Filler-word counts and disfluencies (false starts, repeated words) via regex on the transcript
+- Add two new rubric dimensions, both at **high tool reliability**:
+  - **Pace** — WPM ranges with anchors (150–180 is the standard speaking range; below 130 reads as draggy; above 200 reads as rushed). Also surfaces pause patterns.
+  - **Pronunciation Clarity** — flags specific words a listener would have to work to catch. Framed as *intelligibility*, never as accent. Explicitly does NOT compare against native-speaker references.
+- Result UI: each new dimension gets the same card pattern as the existing four; pronunciation examples link back to the specific word in the transcript
+
+**Success criteria:**
+- A clip you self-record at 240 WPM scores significantly worse on Pace than the same content at 170 WPM
+- Words you deliberately mumble are flagged in Pronunciation Clarity examples
+- The rubric still discriminates across all six dimensions (the prompt doesn't collapse into noise)
+
+**Estimated effort:** ~3–4 hours. The Whisper response shape changes; the rubric prompt grows by two dimensions; the schema gains two more `dimensionResult` keys. No infrastructure work.
+
+**Why this comes before M7 (queue):** The queue is invisible to the user; the new audio dimensions are immediately visible. Friend feedback was about the *product*, not the constraint. Ship product value first.
+
+### M7 — Background analysis queue (remove the 2-min cap)
 
 **Deliverable:** Recordings can be any length. The 2-minute cap in the Recorder goes away. Analyses run in the background after stop.
 
@@ -153,7 +179,38 @@ A milestone-sequenced plan for shipping Cadence v1. The principle is **end-to-en
 
 **Trigger to pull this in:** Either (a) you find a real friend repeatedly bumping into the 2-min cap, or (b) you're about to ship Cadence beyond friends-and-family. Whichever comes first.
 
-### M6 — Trends and cross-session recall
+### M8 — Audio signal processing (Intonation, Vocal Energy, Expressive Range)
+
+**Deliverable:** Three dimensions that come from the audio waveform itself, not from text. The half of the friend feedback that Whisper signals can't reach.
+
+**Why this exists:** Pace and pronunciation are *language-level* signals — they live in what Whisper returns. Intonation, energy, and expressive range live in the *waveform*. A speaker can be perfectly paced and clear-spoken and still deliver everything in a flat monotone or trail off at every sentence-end. Cadence should catch that.
+
+**Components:**
+- A Python audio-processing worker, running outside Vercel (Fly.io is the cheapest credible host, ~$5/mo) — Vercel's serverless runtime doesn't fit Python signal-processing libs well
+- The worker exposes an HTTP endpoint that takes a Supabase storage path and returns:
+  - Pitch contour stats: F0 range, variability, sentence-end pitch movement (extracted via `pyworld` or `parselmouth`)
+  - Energy/RMS curve: sentence-end energy drop, overall stability
+  - Voice activity detection: speaking-time ratio vs. pauses
+- `/api/analyze` (running on the background queue from M7) calls the Python worker before Claude. The waveform-derived stats become inputs to the rubric prompt.
+- Three new rubric dimensions, all at **medium tool reliability**:
+  - **Intonation** — was the delivery expressive, or monotone?
+  - **Vocal Energy** — did your voice stay steady, or trail off at sentence-ends?
+  - **Expressive Range** — did the pitch and energy work together to signal emphasis, or was the whole recording uniform?
+- Result UI: each gets its own card, same calibrated-honesty confidence label pattern as the existing dimensions
+
+**Why this comes after M7 (queue):** Adding 10–15s of audio processing per session to the synchronous request path would push the 60s timeout even harder. M7 makes processing time invisible to the user; this milestone uses that runway.
+
+**Success criteria:**
+- A deliberately-monotone recording scores meaningfully worse on Intonation than the same content delivered with normal variance
+- Sentence-end trail-off is flagged in Vocal Energy
+- The Python worker's median per-file processing time is under 12 seconds
+
+**Estimated effort:** 1–2 weekends. The Fly.io worker setup is the most novel piece; pitch/energy extraction is well-trodden territory in the audio-processing ecosystem.
+
+**Explicitly NOT in this milestone — and not planned at all:**
+- Phoneme-level pronunciation analysis comparing the speaker to native references. That goes against the calibrated-honesty positioning (Cadence is not about sounding native), and pulls the product into research territory. The Pronunciation Clarity dimension from M6 covers what's defensibly measurable; we stop there.
+
+### M9 — Trends and cross-session recall
 
 **Deliverable:** A weekly view shows your dimension scores over time. The digest can reference trends ("Your conciseness improved 0.6 points over the last three weeks").
 
@@ -170,7 +227,7 @@ A milestone-sequenced plan for shipping Cadence v1. The principle is **end-to-en
 
 **Estimated effort:** 1–2 weekends.
 
-### M7 — Lower-confidence dimensions
+### M10 — Lower-confidence dimensions (Tone Fit + Composure)
 
 **Deliverable:** Tone Fit, Composure, plus the N/A logic. Each ships with explicit calibrated-honesty UI.
 
@@ -186,12 +243,6 @@ A milestone-sequenced plan for shipping Cadence v1. The principle is **end-to-en
 - Tone Fit scores feel sensible across at least three different session types
 
 **Estimated effort:** 1–2 weekends.
-
-### M8 — Intelligibility (deferred / v2)
-
-**Deliverable:** Pronunciation-level feedback using Whisper word-confidence + simple audio-level features.
-
-This is explicitly v2 work. The v1 placeholder: surface low-Whisper-confidence words as "possibly unclear pronunciation moments." Useful, modest, requires no audio-processing pipeline.
 
 ## Explicitly NOT in v1
 

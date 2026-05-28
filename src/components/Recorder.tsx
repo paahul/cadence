@@ -20,7 +20,7 @@ type WakeLockApi = {
   request: (type: "screen") => Promise<WakeLockSentinelLike>;
 };
 
-const MAX_RECORDING_MS = 120_000; // 2 minutes — band-aid for the 60s Vercel function timeout
+const MAX_RECORDING_MS = 120_000; // 2 minutes — band-aid for the 60s Vercel function timeout; removed by M7 (background queue)
 const URGENT_WINDOW_MS = 10_000;
 
 function formatDuration(ms: number) {

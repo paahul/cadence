@@ -45,9 +45,11 @@ The lens is becoming more effective at communication — the single highest-leve
 | **M4** | Daily digest email — Vercel Cron, Resend delivery, structured Claude synthesis | ✅ Shipped |
 | **M5** | Multi-user — Supabase Auth (magic links), user-scoped data with Row Level Security, per-user digest recipients, custom verified domain (`coach@paahulhq.com`) | ✅ Shipped |
 | UX pass | Editorial design system, custom palette + Newsreader serif, audio playback on session detail, date-grouped home list with score mini-charts, restructured digest email | ✅ Shipped |
-| **M6** | Trends + cross-session recall — pgvector, weekly view, trend-aware digest | 🟡 Deferred until 3+ weeks of real data |
-| **M7** | Lower-confidence dimensions (Tone Fit, Composure) — explicitly de-scoped from v1 | ⏸ Reconsidering after extended use |
-| **M8** | Intelligibility scoring — pronunciation feedback via audio analysis | 🚫 v2 |
+| **M6** | Whisper-derived audio signals — adds Pace and Pronunciation Clarity dimensions using Whisper's `verbose_json` timestamps + per-word log-probabilities | 🟡 Next up — addresses real friend feedback that v1 only analyzes the transcript, not the speech |
+| **M7** | Background analysis queue — removes the 2-minute recording cap by moving Whisper + Claude off the synchronous request path (Inngest or similar) | 🟡 Pending — pull when recording length friction or pre-public-launch |
+| **M8** | Audio signal processing — adds Intonation, Vocal Energy, and Expressive Range via a Python worker computing pitch contour + RMS curves (Fly.io) | 🟡 Pending — needs M7 first for processing headroom |
+| **M9** | Trends + cross-session recall — pgvector, weekly view, trend-aware digest | 🟡 Pending — meaningful only after 3+ weeks of data |
+| **M10** | Lower-confidence dimensions (Tone Fit + Composure) with session-type tag + N/A logic | 🟡 Pending |
 
 ---
 
