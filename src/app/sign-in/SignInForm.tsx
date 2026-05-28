@@ -85,7 +85,7 @@ export function SignInForm() {
         <div className="flex w-full flex-col gap-2 rounded-lg border border-accent bg-accent-tint px-5 py-4 text-sm text-accent-strong">
           <div className="font-medium text-ink">Check your inbox</div>
           <div className="text-[13px] leading-5 text-ink-2">
-            We sent a 6-digit sign-in code to{" "}
+            We sent a sign-in code to{" "}
             <span className="font-medium text-ink">{email}</span>. Paste it
             below.
           </div>
@@ -96,18 +96,18 @@ export function SignInForm() {
             htmlFor="cadence-otp-code"
             className="text-xs font-medium uppercase tracking-wider text-muted"
           >
-            6-digit code
+            Sign-in code
           </label>
           <input
             id="cadence-otp-code"
             type="text"
             inputMode="numeric"
             autoComplete="one-time-code"
-            pattern="\d{6}"
-            maxLength={6}
-            placeholder="123456"
+            pattern="\d{6,10}"
+            maxLength={10}
+            placeholder="12345678"
             value={code}
-            onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+            onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 10))}
             disabled={verifyStatus === "verifying"}
             className="rounded-lg border border-line bg-card px-4 py-3 text-[15px] tracking-[0.3em] text-ink outline-none transition-colors placeholder:text-faint focus:border-accent disabled:opacity-50"
           />
@@ -171,7 +171,7 @@ export function SignInForm() {
         </div>
       ) : null}
       <div className="mt-1 text-xs leading-5 text-muted">
-        No password needed. We email you a 6-digit code to paste here.
+        No password needed. We email you a code to paste here.
       </div>
     </form>
   );
