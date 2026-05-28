@@ -19,14 +19,35 @@ const newsreader = Newsreader({
   weight: ["400", "500", "600"],
 });
 
+const SITE_URL = "https://cadence.paahulhq.com";
+const DESCRIPTION =
+  "A speaking coach that listens to how you communicate and tells you, specifically, what to work on next. Clarity, conciseness, confidence, word precision — scored from your own voice, with a daily read each weekday morning.";
+
 export const metadata: Metadata = {
-  title: "Cadence",
-  description:
-    "A speaking coach that listens to how you communicate and tells you, specifically, what to work on next.",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "Cadence — a speaking coach",
+    template: "%s · Cadence",
+  },
+  description: DESCRIPTION,
+  applicationName: "Cadence",
   appleWebApp: {
     capable: true,
     title: "Cadence",
     statusBarStyle: "black-translucent",
+  },
+  openGraph: {
+    title: "Cadence — a speaking coach",
+    description: DESCRIPTION,
+    url: SITE_URL,
+    siteName: "Cadence",
+    type: "website",
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Cadence — a speaking coach",
+    description: DESCRIPTION,
   },
 };
 
