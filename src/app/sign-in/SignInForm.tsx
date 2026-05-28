@@ -105,7 +105,7 @@ export function SignInForm() {
             autoComplete="one-time-code"
             pattern="\d{6,10}"
             maxLength={10}
-            placeholder="12345678"
+            placeholder="123456"
             value={code}
             onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 10))}
             disabled={verifyStatus === "verifying"}
