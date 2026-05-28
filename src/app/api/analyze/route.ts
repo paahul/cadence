@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { toFile } from "openai/uploads";
 import { ANALYSIS_MODEL, getAnthropic } from "@/lib/anthropic";
+import { insertSessionWithResults } from "@/lib/db";
 import { getOpenAI } from "@/lib/openai";
 import { buildAnalysisPrompt } from "@/lib/rubric/prompt";
 import { analysisSchema } from "@/lib/rubric/schema";
@@ -28,23 +29,29 @@ function extractJsonObject(text: string): string {
   return trimmed;
 }
 
+type AnalyzeRequest = {
+  storagePath?: string;
+  mimeType?: string;
+  durationMs?: number;
+};
+
 export async function POST(request: Request) {
-  let storagePath: string;
+  let body: AnalyzeRequest;
   try {
-    const body = (await request.json()) as { storagePath?: string };
-    if (!body.storagePath) {
-      return NextResponse.json(
-        { error: "Missing storagePath" },
-        { status: 400 },
-      );
-    }
-    storagePath = body.storagePath;
+    body = (await request.json()) as AnalyzeRequest;
   } catch {
     return NextResponse.json(
       { error: "Invalid JSON body" },
       { status: 400 },
     );
   }
+
+  if (!body.storagePath) {
+    return NextResponse.json({ error: "Missing storagePath" }, { status: 400 });
+  }
+  const storagePath = body.storagePath;
+  const mimeType = body.mimeType ?? "audio/webm";
+  const durationMs = typeof body.durationMs === "number" ? body.durationMs : null;
 
   // 1. Download the audio from Supabase Storage
   const { data: audioBlob, error: downloadError } = await getSupabaseAdmin()
@@ -110,10 +117,7 @@ export async function POST(request: Request) {
     parsed = JSON.parse(cleaned);
   } catch {
     return NextResponse.json(
-      {
-        error: "Analyzer returned non-JSON output",
-        raw: rawAnalysisText,
-      },
+      { error: "Analyzer returned non-JSON output", raw: rawAnalysisText },
       { status: 502 },
     );
   }
@@ -130,8 +134,28 @@ export async function POST(request: Request) {
     );
   }
 
-  return NextResponse.json({
-    transcript,
-    analysis: validated.data,
-  });
+  // 5. Persist
+  try {
+    const session = await insertSessionWithResults({
+      storagePath,
+      mimeType,
+      durationMs,
+      transcript,
+      dimensions: validated.data.dimensions,
+      model: ANALYSIS_MODEL,
+    });
+    return NextResponse.json({
+      sessionId: session.id,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "DB insert failed";
+    return NextResponse.json(
+      {
+        error: `Could not save session: ${message}`,
+        transcript,
+        analysis: validated.data,
+      },
+      { status: 500 },
+    );
+  }
 }
