@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { AnalysisView } from "@/components/AnalysisView";
-import { getSession } from "@/lib/db";
+import { getMySession } from "@/lib/db";
+import { getSupabaseServer } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -28,8 +29,14 @@ export default async function SessionDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const supabase = await getSupabaseServer();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/sign-in");
+
   const { id } = await params;
-  const fullSession = await getSession(id).catch(() => null);
+  const fullSession = await getMySession(supabase, id).catch(() => null);
 
   if (!fullSession) {
     notFound();

@@ -1,5 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+export const RECORDINGS_BUCKET = "recordings";
+
 let cachedAdmin: SupabaseClient | null = null;
 
 export function getSupabaseAdmin(): SupabaseClient {
@@ -13,5 +15,3 @@ export function getSupabaseAdmin(): SupabaseClient {
   });
   return cachedAdmin;
 }
-
-export const RECORDINGS_BUCKET = "recordings";

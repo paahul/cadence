@@ -1,7 +1,10 @@
 import Link from "next/link";
-import { listSessions, type FullSession } from "@/lib/db";
+import { redirect } from "next/navigation";
+import { listMySessions, type FullSession } from "@/lib/db";
 import { DIMENSIONS } from "@/lib/rubric/dimensions";
 import type { AnalysisResult } from "@/lib/rubric/schema";
+import { getSupabaseServer } from "@/lib/supabase/server";
+import { SignOutButton } from "./SignOutButton";
 
 export const dynamic = "force-dynamic";
 
@@ -43,10 +46,18 @@ function pickFocusFromAnalysis(dims: AnalysisResult["dimensions"]) {
 }
 
 export default async function Home() {
+  const supabase = await getSupabaseServer();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // Middleware should have redirected unauth users; defensive check anyway.
+  if (!user) redirect("/sign-in");
+
   let sessions: FullSession[] = [];
   let loadError: string | null = null;
   try {
-    sessions = await listSessions(50);
+    sessions = await listMySessions(supabase, 50);
   } catch (err) {
     loadError = err instanceof Error ? err.message : String(err);
   }
@@ -64,23 +75,26 @@ export default async function Home() {
               : `${sessions.length} ${sessions.length === 1 ? "session" : "sessions"}`}
           </div>
         </div>
-        <Link
-          href="/new"
-          className="rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-slate-50 hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
-        >
-          + New
-        </Link>
+        <div className="flex items-center gap-3">
+          <SignOutButton />
+          <Link
+            href="/new"
+            className="rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-slate-50 hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
+          >
+            + New
+          </Link>
+        </div>
       </header>
 
       <main className="flex flex-1 flex-col gap-3 px-6 py-6">
         {loadError ? (
           <div className="rounded-md bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-            <div className="font-medium">Couldn&apos;t load past sessions.</div>
+            <div className="font-medium">Couldn&apos;t load your sessions.</div>
             <div className="mt-1 text-xs">{loadError}</div>
             <div className="mt-2 text-xs text-amber-800 dark:text-amber-300">
-              If this is the first run, the database tables may not exist yet —
-              run <code>supabase/migrations/0001_init.sql</code> in your
-              Supabase SQL editor.
+              If this is the first run after the M5 migration, make sure
+              you&apos;ve run <code>supabase/migrations/0002_multi_user.sql</code>{" "}
+              in your Supabase SQL editor.
             </div>
           </div>
         ) : null}
@@ -88,12 +102,13 @@ export default async function Home() {
         {sessions.length === 0 && !loadError ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 py-16 text-center">
             <div className="text-base text-zinc-700 dark:text-zinc-300">
-              Tap <span className="font-medium">+ New</span> to record your
-              first session.
+              Welcome, {user.email}.
             </div>
             <div className="max-w-xs text-sm text-zinc-500 dark:text-zinc-400">
-              Cadence analyzes how you communicate — clarity, conciseness,
-              confidence, and word precision — using your own voice.
+              Tap <span className="font-medium">+ New</span> to record your
+              first session. Cadence analyzes how you communicate — clarity,
+              conciseness, confidence, and word precision — using your own
+              voice.
             </div>
           </div>
         ) : null}

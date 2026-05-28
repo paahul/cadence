@@ -5,7 +5,8 @@ import { insertSessionWithResults } from "@/lib/db";
 import { getOpenAI } from "@/lib/openai";
 import { buildAnalysisPrompt } from "@/lib/rubric/prompt";
 import { analysisSchema } from "@/lib/rubric/schema";
-import { RECORDINGS_BUCKET, getSupabaseAdmin } from "@/lib/supabase";
+import { RECORDINGS_BUCKET, getSupabaseAdmin } from "@/lib/supabase/admin";
+import { getSupabaseServer } from "@/lib/supabase/server";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
@@ -36,14 +37,19 @@ type AnalyzeRequest = {
 };
 
 export async function POST(request: Request) {
+  const serverSupabase = await getSupabaseServer();
+  const {
+    data: { user },
+  } = await serverSupabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  }
+
   let body: AnalyzeRequest;
   try {
     body = (await request.json()) as AnalyzeRequest;
   } catch {
-    return NextResponse.json(
-      { error: "Invalid JSON body" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
   if (!body.storagePath) {
@@ -51,7 +57,17 @@ export async function POST(request: Request) {
   }
   const storagePath = body.storagePath;
   const mimeType = body.mimeType ?? "audio/webm";
-  const durationMs = typeof body.durationMs === "number" ? body.durationMs : null;
+  const durationMs =
+    typeof body.durationMs === "number" ? body.durationMs : null;
+
+  // Guard: storage path must belong to this user (defense-in-depth — the signed
+  // upload URL we issued earlier already had the path baked in).
+  if (!storagePath.startsWith(`users/${user.id}/`)) {
+    return NextResponse.json(
+      { error: "Storage path does not belong to this user" },
+      { status: 403 },
+    );
+  }
 
   // 1. Download the audio from Supabase Storage
   const { data: audioBlob, error: downloadError } = await getSupabaseAdmin()
@@ -134,9 +150,10 @@ export async function POST(request: Request) {
     );
   }
 
-  // 5. Persist
+  // 5. Persist with this user's id
   try {
     const session = await insertSessionWithResults({
+      userId: user.id,
       storagePath,
       mimeType,
       durationMs,
@@ -144,9 +161,7 @@ export async function POST(request: Request) {
       dimensions: validated.data.dimensions,
       model: ANALYSIS_MODEL,
     });
-    return NextResponse.json({
-      sessionId: session.id,
-    });
+    return NextResponse.json({ sessionId: session.id });
   } catch (err) {
     const message = err instanceof Error ? err.message : "DB insert failed";
     return NextResponse.json(
