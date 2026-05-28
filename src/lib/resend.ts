@@ -10,4 +10,8 @@ export function getResend(): Resend {
   return cached;
 }
 
-export const DIGEST_FROM_ADDRESS = "Cadence <onboarding@resend.dev>";
+// Falls back to Resend's testing address if no env var is set, which only
+// delivers to the Resend account owner. Set CADENCE_DIGEST_FROM_ADDRESS to a
+// verified-domain address once your domain is set up in Resend.
+export const DIGEST_FROM_ADDRESS =
+  process.env.CADENCE_DIGEST_FROM_ADDRESS ?? "Cadence <onboarding@resend.dev>";
