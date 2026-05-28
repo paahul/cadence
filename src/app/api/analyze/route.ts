@@ -2,10 +2,8 @@ import { NextResponse } from "next/server";
 import { toFile } from "openai/uploads";
 import { ANALYSIS_MODEL, getAnthropic } from "@/lib/anthropic";
 import { getOpenAI } from "@/lib/openai";
-import {
-  buildWordPrecisionPrompt,
-  wordPrecisionSchema,
-} from "@/lib/rubric/word-precision";
+import { buildAnalysisPrompt } from "@/lib/rubric/prompt";
+import { analysisSchema } from "@/lib/rubric/schema";
 import { RECORDINGS_BUCKET, getSupabaseAdmin } from "@/lib/supabase";
 
 export const maxDuration = 60;
@@ -86,15 +84,13 @@ export async function POST(request: Request) {
     );
   }
 
-  // 3. Run the Word Precision rubric via Claude
+  // 3. Run the four-dimension rubric via Claude
   let rawAnalysisText: string;
   try {
     const response = await getAnthropic().messages.create({
       model: ANALYSIS_MODEL,
-      max_tokens: 1024,
-      messages: [
-        { role: "user", content: buildWordPrecisionPrompt(transcript) },
-      ],
+      max_tokens: 2048,
+      messages: [{ role: "user", content: buildAnalysisPrompt(transcript) }],
     });
     const firstBlock = response.content[0];
     rawAnalysisText =
@@ -107,7 +103,7 @@ export async function POST(request: Request) {
     );
   }
 
-  // 4. Parse + validate the JSON shape
+  // 4. Parse + validate
   const cleaned = extractJsonObject(rawAnalysisText);
   let parsed: unknown;
   try {
@@ -122,7 +118,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const validated = wordPrecisionSchema.safeParse(parsed);
+  const validated = analysisSchema.safeParse(parsed);
   if (!validated.success) {
     return NextResponse.json(
       {
