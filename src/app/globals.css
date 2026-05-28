@@ -1,26 +1,104 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* =========================================================================
+ * Cadence design tokens
+ *
+ * The product is about thoughtful, longitudinal feedback on speaking.
+ * The visual language is editorial: warm off-white backgrounds, layered
+ * inks, a single muted-teal accent. Serif headlines pair with the
+ * sans-serif body. Generic Tailwind palette is avoided in favor of
+ * named tokens so the brand stays consistent across pages and email.
+ * ========================================================================= */
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+:root {
+  /* Surfaces */
+  --color-paper: #f7f4ee;          /* warm off-white background */
+  --color-paper-2: #efeae0;        /* subtle elevated surface */
+  --color-card: #ffffff;           /* card on paper */
+
+  /* Inks (text) */
+  --color-ink: #0f1b2d;            /* deepest — headlines, important text */
+  --color-ink-2: #3b4658;          /* secondary text */
+  --color-muted: #7c8597;          /* tertiary text, labels */
+  --color-faint: #a9b0bd;          /* hints, dim labels */
+
+  /* Lines */
+  --color-line: #e3ddd0;           /* dividers on paper */
+  --color-line-strong: #cdc4b2;    /* stronger dividers */
+
+  /* Accent — a calm petrol/teal, signals brand without shouting */
+  --color-accent: #2c5a6e;
+  --color-accent-strong: #224556;
+  --color-accent-tint: #dfe6ea;
+
+  /* Recording — a muted clay red, less alarming than tomato-600 */
+  --color-record: #a14238;
+  --color-record-tint: #f1dbd7;
+
+  /* Status */
+  --color-positive: #3e6951;       /* used for "✓ done" affirmations */
+  --color-warn: #a06b1f;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --color-paper: #0c1018;
+    --color-paper-2: #141a26;
+    --color-card: #161d2a;
+
+    --color-ink: #f3eee2;
+    --color-ink-2: #c8ccd3;
+    --color-muted: #8b94a3;
+    --color-faint: #5a6271;
+
+    --color-line: #29303d;
+    --color-line-strong: #3a4250;
+
+    --color-accent: #66a5bd;
+    --color-accent-strong: #8bc1d4;
+    --color-accent-tint: #1a2a33;
+
+    --color-record: #d97766;
+    --color-record-tint: #2a1714;
+
+    --color-positive: #79b08f;
+    --color-warn: #d7a35a;
   }
 }
 
+@theme inline {
+  --color-paper: var(--color-paper);
+  --color-paper-2: var(--color-paper-2);
+  --color-card: var(--color-card);
+  --color-ink: var(--color-ink);
+  --color-ink-2: var(--color-ink-2);
+  --color-muted: var(--color-muted);
+  --color-faint: var(--color-faint);
+  --color-line: var(--color-line);
+  --color-line-strong: var(--color-line-strong);
+  --color-accent: var(--color-accent);
+  --color-accent-strong: var(--color-accent-strong);
+  --color-accent-tint: var(--color-accent-tint);
+  --color-record: var(--color-record);
+  --color-record-tint: var(--color-record-tint);
+  --color-positive: var(--color-positive);
+  --color-warn: var(--color-warn);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-serif: var(--font-newsreader), Georgia, "Times New Roman", serif;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-feature-settings: "ss01", "cv02";
+}
+
+/* Reusable headline class for editorial moments */
+.headline {
+  font-family: var(--font-serif);
+  letter-spacing: -0.01em;
+  color: var(--color-ink);
 }

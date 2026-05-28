@@ -192,7 +192,7 @@ export function Recorder() {
   const buttonDisabled = isProcessing;
 
   return (
-    <div className="flex w-full flex-col items-center gap-8">
+    <div className="flex w-full flex-col items-center gap-10">
       <button
         type="button"
         onClick={isRecording ? stop : start}
@@ -200,25 +200,28 @@ export function Recorder() {
         aria-label={isRecording ? "Stop recording" : "Start recording"}
         className={`group relative flex h-40 w-40 items-center justify-center rounded-full transition-all ${
           isRecording
-            ? "bg-red-600 shadow-[0_0_0_8px_rgba(220,38,38,0.18)]"
-            : "bg-slate-900 hover:bg-slate-800 active:scale-95 dark:bg-slate-100 dark:hover:bg-white"
+            ? "bg-record shadow-[0_0_0_10px_var(--color-record-tint)]"
+            : "bg-accent hover:bg-accent-strong active:scale-95"
         } ${buttonDisabled ? "opacity-40" : ""}`}
       >
         {isRecording ? (
-          <span className="block h-12 w-12 rounded-md bg-white" />
+          <span className="block h-12 w-12 rounded-md bg-card" />
         ) : (
-          <span className="block h-16 w-16 rounded-full bg-white dark:bg-slate-900" />
+          <span className="block h-16 w-16 rounded-full bg-card" />
         )}
         {isRecording ? (
-          <span className="pointer-events-none absolute inset-0 animate-ping rounded-full bg-red-500/30" />
+          <span
+            className="pointer-events-none absolute inset-0 animate-ping rounded-full"
+            style={{ background: "color-mix(in srgb, var(--color-record) 35%, transparent)" }}
+          />
         ) : null}
       </button>
 
-      <div className="flex flex-col items-center gap-1">
-        <div className="font-mono text-3xl tabular-nums text-zinc-950 dark:text-zinc-50">
+      <div className="flex flex-col items-center gap-2">
+        <div className="font-mono text-3xl tabular-nums text-ink">
           {formatDuration(elapsedMs)}
         </div>
-        <div className="text-sm text-zinc-500 dark:text-zinc-400">
+        <div className="text-sm text-muted">
           {status === "idle" && "Tap to start"}
           {status === "recording" && "Recording — tap to stop"}
           {status === "uploading" && "Uploading…"}
@@ -228,12 +231,12 @@ export function Recorder() {
       </div>
 
       {errorMessage ? (
-        <div className="flex w-full max-w-md flex-col items-center gap-3 rounded-md bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">
+        <div className="flex w-full max-w-md flex-col items-center gap-3 rounded-md border border-record bg-record-tint px-4 py-3 text-sm text-record">
           <div className="text-center">{errorMessage}</div>
           <button
             type="button"
             onClick={resetError}
-            className="rounded-full border border-red-300 px-3 py-1 text-xs font-medium text-red-700 hover:bg-red-100 dark:border-red-800/60 dark:text-red-300 dark:hover:bg-red-950"
+            className="rounded-full border border-record px-3 py-1 text-xs font-medium text-record transition-colors hover:bg-paper"
           >
             Try again
           </button>

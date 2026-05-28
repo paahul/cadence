@@ -6,17 +6,11 @@ import type { AnalysisResult, DimensionResult } from "./rubric/schema";
 export type DigestWindow = {
   start: Date;
   end: Date;
-  label: string; // human-readable label like "yesterday" or "Fri–Sun"
+  label: string;
 };
 
-/**
- * Pick the lookback window for a digest cron firing at `now` (UTC).
- * - Tue–Fri: yesterday only.
- * - Mon: last 3 days (Fri + Sat + Sun) so weekend recordings aren't lost.
- * - Sat/Sun: shouldn't fire (cron is Mon–Fri) but handle gracefully = yesterday.
- */
 export function pickDigestWindow(now: Date): DigestWindow {
-  const dayOfWeek = now.getUTCDay(); // 0 = Sun, 1 = Mon, ...
+  const dayOfWeek = now.getUTCDay();
   const lookbackDays = dayOfWeek === 1 ? 3 : 1;
 
   const end = new Date(
@@ -67,6 +61,7 @@ export type DigestStats = {
   best: DimensionAverage;
   focus: DimensionAverage;
   focusExample: { quote: string; issue: string } | null;
+  averages: DimensionAverage[];
 };
 
 export function summarizeSessions(sessions: FullSession[]): DigestStats | null {
@@ -77,11 +72,9 @@ export function summarizeSessions(sessions: FullSession[]): DigestStats | null {
   );
   if (averages.length === 0) return null;
 
-  // Best = highest avg, Focus = lowest avg. Tie-break: earlier in DIMENSIONS order.
   const best = [...averages].sort((a, b) => b.average - a.average)[0];
   const focus = [...averages].sort((a, b) => a.average - b.average)[0];
 
-  // Pull a representative example for the focus dimension from the lowest-scoring session
   let focusExample: { quote: string; issue: string } | null = null;
   const focusKey = focus.dim.id as keyof AnalysisResult["dimensions"];
   const sessionsByFocusScore = [...sessions]
@@ -110,18 +103,24 @@ export function summarizeSessions(sessions: FullSession[]): DigestStats | null {
     best,
     focus,
     focusExample,
+    averages,
   };
 }
 
+export type Synthesis = {
+  synthesis: string;
+  actionStep: string;
+};
+
 /**
- * Build a short coaching synthesis paragraph via Claude. ~60–90 words.
- * Returns null on failure (caller should fall back to a template line).
+ * Ask Claude for a coaching synthesis + one concrete action step.
+ * Returns null on parse failure (caller falls back to a templated line).
  */
 export async function generateSynthesis(
   sessions: FullSession[],
   stats: DigestStats,
   windowLabel: string,
-): Promise<string | null> {
+): Promise<Synthesis | null> {
   const perSession = sessions
     .map((s, i) => {
       const dims = s.analysis?.dimensions;
@@ -140,34 +139,61 @@ export async function generateSynthesis(
     .filter(Boolean)
     .join("\n\n");
 
-  const prompt = `You are a personal speaking coach writing a short daily note to your client. The note will appear at the top of their morning digest email.
+  const prompt = `You are a personal speaking coach writing a short daily note that will appear at the top of your client's morning digest email.
 
 Their data from ${windowLabel}:
-- ${stats.sessionCount} session${stats.sessionCount === 1 ? "" : "s"} totaling ${Math.round(stats.totalDurationMs / 60000)} minutes.
+- ${stats.sessionCount} session${stats.sessionCount === 1 ? "" : "s"} totaling ${Math.round(stats.totalDurationMs / 60000)} minute${Math.round(stats.totalDurationMs / 60000) === 1 ? "" : "s"}.
 - Strongest dimension: ${stats.best.dim.name} (${stats.best.average.toFixed(1)} avg)
 - Weakest dimension: ${stats.focus.dim.name} (${stats.focus.average.toFixed(1)} avg)
 
 Per-session breakdown:
 ${perSession}
 
-Write a coaching note in **60–90 words** that:
-1. Names what they did well (their strongest dimension), tied to a specific observation.
-2. Names the recurring pattern in their weakest dimension.
-3. Gives **one concrete thing to focus on** today.
+Produce two outputs:
 
-Style: direct, conversational, respectful — like a smart coach who knows your work. Refer to the client as "you". Don't use bullet points; write as one flowing paragraph. Don't restate the scores numerically. Don't include a greeting or sign-off. Return only the paragraph, no preamble.`;
+1. A **synthesis paragraph** (50–80 words) that names what they did well (their strongest dimension, tied to a specific observation) and the recurring pattern in their weakest dimension. Direct, conversational, respectful — like a smart coach. Refer to them as "you". No numbers in the paragraph; no greeting; no sign-off. Do NOT include the action step in this paragraph.
+
+2. A **concrete action step** they can try today (15–30 words, one sentence or two short ones). Must be a specific behavior they can do — not a vague goal. Imperative voice. Should be doable before their next recording. Do NOT restate the dimension name in the action step.
+
+Return **strict JSON only** matching:
+
+\`\`\`
+{
+  "synthesis": "<paragraph>",
+  "actionStep": "<one specific behavioral instruction>"
+}
+\`\`\`
+
+No markdown fences, no preamble, no trailing commentary. Just the JSON.`;
 
   try {
     const response = await getAnthropic().messages.create({
       model: ANALYSIS_MODEL,
-      max_tokens: 400,
+      max_tokens: 500,
       messages: [{ role: "user", content: prompt }],
     });
     const first = response.content[0];
-    if (first && first.type === "text") {
-      return first.text.trim();
+    if (!first || first.type !== "text") return null;
+
+    const text = first.text.trim();
+    const jsonStart = text.indexOf("{");
+    const jsonEnd = text.lastIndexOf("}");
+    if (jsonStart === -1 || jsonEnd <= jsonStart) return null;
+
+    const parsed = JSON.parse(text.slice(jsonStart, jsonEnd + 1)) as {
+      synthesis?: unknown;
+      actionStep?: unknown;
+    };
+    if (
+      typeof parsed.synthesis !== "string" ||
+      typeof parsed.actionStep !== "string"
+    ) {
+      return null;
     }
-    return null;
+    return {
+      synthesis: parsed.synthesis.trim(),
+      actionStep: parsed.actionStep.trim(),
+    };
   } catch {
     return null;
   }
