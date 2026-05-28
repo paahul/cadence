@@ -116,6 +116,50 @@ export async function listSessions(limit = 50): Promise<FullSession[]> {
   });
 }
 
+export async function getSessionsBetween(
+  startIso: string,
+  endIso: string,
+): Promise<FullSession[]> {
+  const admin = getSupabaseAdmin();
+
+  const { data, error } = await admin
+    .from("sessions")
+    .select(
+      `
+      *,
+      transcripts:transcripts(*),
+      analyses:analyses(*)
+    `,
+    )
+    .gte("created_at", startIso)
+    .lt("created_at", endIso)
+    .order("created_at", { ascending: true });
+
+  if (error || !data) {
+    throw new Error(
+      `Failed to get sessions in range: ${error?.message ?? "unknown"}`,
+    );
+  }
+
+  return data.map((row) => {
+    const r = row as unknown as SessionRow & {
+      transcripts: TranscriptRow[] | null;
+      analyses: AnalysisRow[] | null;
+    };
+    return {
+      session: {
+        id: r.id,
+        created_at: r.created_at,
+        duration_ms: r.duration_ms,
+        storage_path: r.storage_path,
+        mime_type: r.mime_type,
+      },
+      transcript: r.transcripts?.[0] ?? null,
+      analysis: r.analyses?.[0] ?? null,
+    };
+  });
+}
+
 export async function getSession(id: string): Promise<FullSession | null> {
   const admin = getSupabaseAdmin();
 
