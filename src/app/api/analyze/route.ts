@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { toFile } from "openai/uploads";
 import { ANALYSIS_MODEL, getAnthropic } from "@/lib/anthropic";
+import { extractAudioMetrics } from "@/lib/audio-metrics";
 import { insertSessionWithResults } from "@/lib/db";
 import { getOpenAI } from "@/lib/openai";
 import { buildAnalysisPrompt } from "@/lib/rubric/prompt";
@@ -83,15 +84,34 @@ export async function POST(request: Request) {
     );
   }
 
-  // 2. Transcribe with Whisper
+  // 2. Transcribe with Whisper — verbose_json so we get per-word timestamps
+  //    and per-segment confidence (used for Pace + Pronunciation Clarity).
   let transcript: string;
+  let audioMetrics: ReturnType<typeof extractAudioMetrics> | undefined;
   try {
     const file = await toFile(audioBlob, filenameForPath(storagePath));
     const result = await getOpenAI().audio.transcriptions.create({
       file,
       model: "whisper-1",
+      response_format: "verbose_json",
+      timestamp_granularities: ["word"],
     });
     transcript = result.text?.trim() ?? "";
+    const verbose = result as unknown as {
+      duration?: number;
+      words?: { word: string; start: number; end: number }[];
+      segments?: {
+        start: number;
+        end: number;
+        text: string;
+        avg_logprob: number;
+      }[];
+    };
+    audioMetrics = extractAudioMetrics({
+      words: verbose.words ?? [],
+      segments: verbose.segments ?? [],
+      durationSeconds: verbose.duration ?? 0,
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Whisper failed";
     return NextResponse.json(
@@ -107,13 +127,18 @@ export async function POST(request: Request) {
     );
   }
 
-  // 3. Run the four-dimension rubric via Claude
+  // 3. Run the six-dimension rubric via Claude (transcript + audio metrics).
   let rawAnalysisText: string;
   try {
     const response = await getAnthropic().messages.create({
       model: ANALYSIS_MODEL,
-      max_tokens: 2048,
-      messages: [{ role: "user", content: buildAnalysisPrompt(transcript) }],
+      max_tokens: 3000,
+      messages: [
+        {
+          role: "user",
+          content: buildAnalysisPrompt({ transcript, audioMetrics }),
+        },
+      ],
     });
     const firstBlock = response.content[0];
     rawAnalysisText =

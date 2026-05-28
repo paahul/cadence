@@ -21,6 +21,8 @@ export const analysisSchema = z.object({
     conciseness: dimensionResultSchema,
     confidence: dimensionResultSchema,
     wordPrecision: dimensionResultSchema,
+    pace: dimensionResultSchema,
+    pronunciationClarity: dimensionResultSchema,
   }),
 });
 
