@@ -85,10 +85,9 @@ export function SignInForm() {
         <div className="flex w-full flex-col gap-2 rounded-lg border border-accent bg-accent-tint px-5 py-4 text-sm text-accent-strong">
           <div className="font-medium text-ink">Check your inbox</div>
           <div className="text-[13px] leading-5 text-ink-2">
-            We sent a sign-in code to{" "}
-            <span className="font-medium text-ink">{email}</span>. Paste the
-            6-digit code from the email below — or tap the backup link in the
-            email if it&rsquo;s easier.
+            We sent a 6-digit sign-in code to{" "}
+            <span className="font-medium text-ink">{email}</span>. Paste it
+            below.
           </div>
         </div>
 
@@ -125,9 +124,9 @@ export function SignInForm() {
             </div>
           ) : null}
           <div className="text-xs leading-5 text-muted">
-            Use the code if the email link doesn&rsquo;t work. Corporate email
-            scanners sometimes consume single-use links before you get a chance
-            to click them.
+            Codes are easier than links — they work even when corporate email
+            scanners interfere or when you read the email on a different
+            device than you signed in from.
           </div>
         </form>
 
@@ -172,8 +171,7 @@ export function SignInForm() {
         </div>
       ) : null}
       <div className="mt-1 text-xs leading-5 text-muted">
-        No password needed. We email you a 6-digit code (and a link, as a
-        backup).
+        No password needed. We email you a 6-digit code to paste here.
       </div>
     </form>
   );
