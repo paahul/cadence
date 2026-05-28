@@ -20,6 +20,9 @@ type WakeLockApi = {
   request: (type: "screen") => Promise<WakeLockSentinelLike>;
 };
 
+const MAX_RECORDING_MS = 120_000; // 2 minutes — band-aid for the 60s Vercel function timeout
+const URGENT_WINDOW_MS = 10_000;
+
 function formatDuration(ms: number) {
   const totalSeconds = Math.floor(ms / 1000);
   const minutes = Math.floor(totalSeconds / 60);
@@ -95,6 +98,7 @@ export function Recorder() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [analysisStage, setAnalysisStage] =
     useState<AnalysisStage>("uploading");
+  const [autoStopped, setAutoStopped] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -143,6 +147,7 @@ export function Recorder() {
 
   async function start() {
     setErrorMessage(null);
+    setAutoStopped(false);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true },
@@ -165,7 +170,16 @@ export function Recorder() {
       startTimeRef.current = Date.now();
       setElapsedMs(0);
       timerRef.current = setInterval(() => {
-        setElapsedMs(Date.now() - startTimeRef.current);
+        const now = Date.now() - startTimeRef.current;
+        setElapsedMs(now);
+        // Auto-stop at the cap
+        if (
+          now >= MAX_RECORDING_MS &&
+          mediaRecorderRef.current?.state === "recording"
+        ) {
+          setAutoStopped(true);
+          stop();
+        }
       }, 100);
       await acquireWakeLock();
       setStatus("recording");
@@ -185,8 +199,6 @@ export function Recorder() {
         onUploaded: () => {
           setStatus("analyzing");
           setAnalysisStage("transcribing");
-          // Whisper typically takes ~5–10s; fake the visible transition to
-          // "reading" once it's plausible the transcription has completed.
           stageTimeoutRef.current = setTimeout(() => {
             setAnalysisStage((prev) =>
               prev === "transcribing" ? "reading" : prev,
@@ -206,7 +218,10 @@ export function Recorder() {
 
   function stop() {
     if (!mediaRecorderRef.current) return;
-    finalDurationRef.current = Date.now() - startTimeRef.current;
+    finalDurationRef.current = Math.min(
+      Date.now() - startTimeRef.current,
+      MAX_RECORDING_MS,
+    );
     if (mediaRecorderRef.current.state !== "inactive") {
       mediaRecorderRef.current.stop();
     }
@@ -222,11 +237,16 @@ export function Recorder() {
     setStatus("idle");
     setElapsedMs(0);
     setErrorMessage(null);
+    setAutoStopped(false);
   }
 
   const isRecording = status === "recording";
   const isProcessing = status === "uploading" || status === "analyzing";
   const buttonDisabled = isProcessing;
+  const remainingMs = Math.max(0, MAX_RECORDING_MS - elapsedMs);
+  const isUrgent =
+    isRecording && remainingMs > 0 && remainingMs <= URGENT_WINDOW_MS;
+  const cappedElapsed = Math.min(elapsedMs, MAX_RECORDING_MS);
 
   return (
     <div className="flex w-full flex-col items-center gap-10">
@@ -267,12 +287,32 @@ export function Recorder() {
         )}
       </button>
 
-      <div className="flex flex-col items-center gap-2">
-        <div className="font-mono text-3xl tabular-nums text-ink">
-          {formatDuration(elapsedMs)}
+      <div className="flex flex-col items-center gap-3">
+        <div
+          className={`font-mono text-3xl tabular-nums transition-colors ${
+            isUrgent ? "text-record" : "text-ink"
+          }`}
+        >
+          {isRecording
+            ? `${formatDuration(cappedElapsed)} / ${formatDuration(MAX_RECORDING_MS)}`
+            : formatDuration(cappedElapsed)}
         </div>
+
+        {isRecording ? (
+          <RecordingProgressBar
+            elapsedMs={cappedElapsed}
+            maxMs={MAX_RECORDING_MS}
+            isUrgent={isUrgent}
+          />
+        ) : null}
+
         {status === "idle" && (
-          <div className="text-sm text-muted">Tap to start</div>
+          <>
+            <div className="text-sm text-muted">Tap to start</div>
+            <div className="text-xs italic text-faint">
+              Max 2:00 per session
+            </div>
+          </>
         )}
         {status === "recording" && (
           <div className="text-sm text-muted">Recording — tap to stop</div>
@@ -280,6 +320,12 @@ export function Recorder() {
         {status === "error" && (
           <div className="text-sm text-record">Something went wrong</div>
         )}
+
+        {autoStopped && (status === "recording" || isProcessing) ? (
+          <div className="cadence-flash text-xs italic text-record">
+            Max length reached
+          </div>
+        ) : null}
       </div>
 
       {isProcessing ? (
@@ -298,6 +344,38 @@ export function Recorder() {
           </button>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function RecordingProgressBar({
+  elapsedMs,
+  maxMs,
+  isUrgent,
+}: {
+  elapsedMs: number;
+  maxMs: number;
+  isUrgent: boolean;
+}) {
+  const pct = Math.min(100, (elapsedMs / maxMs) * 100);
+  return (
+    <div
+      className="h-[3px] w-48 overflow-hidden rounded-full bg-line"
+      role="progressbar"
+      aria-label="Recording progress toward maximum length"
+      aria-valuenow={Math.round(pct)}
+      aria-valuemin={0}
+      aria-valuemax={100}
+    >
+      <div
+        className="h-full transition-[width,background-color] duration-150"
+        style={{
+          width: `${pct}%`,
+          background: isUrgent
+            ? "var(--color-record)"
+            : "var(--color-accent)",
+        }}
+      />
     </div>
   );
 }

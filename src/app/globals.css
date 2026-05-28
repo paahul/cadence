@@ -132,3 +132,14 @@ body {
   0%, 100% { opacity: 0.35; transform: scale(0.85); }
   50% { opacity: 1; transform: scale(1.15); }
 }
+
+/* A short attention-getting flash for one-off notices like "Max length reached" */
+@keyframes cadence-flash {
+  0% { opacity: 0; transform: translateY(-4px); }
+  15%, 70% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-2px); }
+}
+
+.cadence-flash {
+  animation: cadence-flash 2.4s ease-out forwards;
+}
