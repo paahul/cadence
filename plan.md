@@ -103,7 +103,26 @@ A milestone-sequenced plan for shipping Cadence v1. The principle is **end-to-en
 **Key risks:**
 - Silent cron failure → add a self-ping (e.g., POST to a healthcheck service) inside the cron handler so you find out the same day if it stops firing
 
-### M5 — Trends and cross-session recall
+### M5 — Open to friends (multi-user + custom domain)
+
+**Deliverable:** Other people can sign up, record their own sessions, and receive their own daily digest at their own email. Cadence stops being a personal project and becomes shareable.
+
+**Components:**
+- **Auth:** Supabase Auth (email magic link is cheapest UX) or similar — replace the hardcoded single user
+- **User-scoped data model:** add `user_id` to `sessions`, enforce RLS so users only see their own sessions
+- **Per-user digest recipient:** the cron pulls each user's sessions independently and emails them at their own address (replaces the single `CADENCE_DIGEST_RECIPIENT` env var)
+- **Custom domain in Resend:** verify a real domain (e.g., a subdomain of something Paahul owns), set up SPF/DKIM, swap `onboarding@resend.dev` → `coach@<domain>`. ~10 min of DNS work in the Resend dashboard
+- **Invite flow:** simple — share a sign-up link; whoever clicks creates an account
+
+**Why this milestone now (pulled forward from M8 → M5):** Trends (formerly M5, now M6) need weeks of data to be useful, so they don't lose value by waiting. Multi-user, on the other hand, gates real-world feedback from friends — pulling it forward maximizes the time Cadence is being used by more than one person.
+
+**Why this milestone exists at all:** Resend's `onboarding@resend.dev` only delivers to the account owner. Moving to a verified domain is the prerequisite for sending email to anyone other than Paahul, which is the prerequisite for inviting friends.
+
+**Paired Tripsmith work:** Tripsmith has a related email bug (share-button sends to Paahul instead of the dynamic recipient — likely the same `from`-address constraint). When the Cadence M5 domain work lands, pair it with a Tripsmith pass to verify a domain, swap Tripsmith's `from`, and confirm dynamic recipients work end-to-end. See `~/.claude/projects/-Users-paahulsikand-projects-tripsmith/memory/tripsmith_email_bug.md` for context.
+
+**Estimated effort:** 2–3 weekends — auth alone is a chunk, and the RLS/data-model migration deserves care.
+
+### M6 — Trends and cross-session recall
 
 **Deliverable:** A weekly view shows your dimension scores over time. The digest can reference trends ("Your conciseness improved 0.6 points over the last three weeks").
 
@@ -120,7 +139,7 @@ A milestone-sequenced plan for shipping Cadence v1. The principle is **end-to-en
 
 **Estimated effort:** 1–2 weekends.
 
-### M6 — Lower-confidence dimensions
+### M7 — Lower-confidence dimensions
 
 **Deliverable:** Tone Fit, Composure, plus the N/A logic. Each ships with explicit calibrated-honesty UI.
 
@@ -137,34 +156,15 @@ A milestone-sequenced plan for shipping Cadence v1. The principle is **end-to-en
 
 **Estimated effort:** 1–2 weekends.
 
-### M7 — Intelligibility (deferred / v2)
+### M8 — Intelligibility (deferred / v2)
 
 **Deliverable:** Pronunciation-level feedback using Whisper word-confidence + simple audio-level features.
 
 This is explicitly v2 work. The v1 placeholder: surface low-Whisper-confidence words as "possibly unclear pronunciation moments." Useful, modest, requires no audio-processing pipeline.
 
-### M8 — Open to friends (multi-user + custom domain)
-
-**Deliverable:** Other people can sign up, record their own sessions, and receive their own daily digest at their own email. Cadence stops being a personal project and becomes shareable.
-
-**Components:**
-- **Auth:** Supabase Auth (email magic link is cheapest UX) or similar — replace the hardcoded single user
-- **User-scoped data model:** add `user_id` to `sessions`, enforce RLS so users only see their own sessions
-- **Per-user digest recipient:** the cron pulls each user's sessions independently and emails them at their own address
-- **Custom domain in Resend:** verify a real domain (e.g., a subdomain of something Paahul owns), set up SPF/DKIM, swap `onboarding@resend.dev` → `coach@<domain>`. ~10 min of DNS work in the Resend dashboard
-- **Invite flow:** simple — share a sign-up link; whoever clicks creates an account
-
-**Why this milestone exists:** Resend's `onboarding@resend.dev` only delivers to the account owner. Moving to a verified domain is the prerequisite for sending email to anyone other than Paahul, which is the prerequisite for inviting friends.
-
-**Paired Tripsmith work:** Tripsmith has a related email bug (share-button sends to Paahul instead of the dynamic recipient — likely the same `from`-address constraint). When the Cadence M8 domain work lands, pair it with a Tripsmith pass to verify a domain, swap Tripsmith's `from`, and confirm dynamic recipients work end-to-end. See `~/.claude/projects/-Users-paahulsikand-projects-tripsmith/memory/tripsmith_email_bug.md` for context.
-
-**Estimated effort:** 2–3 weekends — auth alone is a chunk, and the RLS/data-model migration deserves care.
-
-**Status:** Not blocking M4–M7. Pull when Paahul is ready to share Cadence with someone else.
-
 ## Explicitly NOT in v1
 
-- Authentication / multi-user (single hardcoded user) — *deferred to M8, not cut*
+- Authentication / multi-user (single hardcoded user) — *moved to M5, not cut*
 - App Store deployment / native shell
 - Real-time live analysis during a call
 - Audio-level prosodic analysis beyond Whisper confidence
