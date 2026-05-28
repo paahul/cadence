@@ -22,16 +22,46 @@ export async function POST(request: Request) {
     );
   }
 
+  // Diagnostic check: verify env vars are present and bucket is reachable.
+  const envPresence = {
+    NEXT_PUBLIC_SUPABASE_URL: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+    SUPABASE_SERVICE_ROLE_KEY: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+  };
+
+  let admin;
+  try {
+    admin = getSupabaseAdmin();
+  } catch (err) {
+    return NextResponse.json(
+      {
+        error: "Supabase admin init failed",
+        detail: err instanceof Error ? err.message : String(err),
+        envPresence,
+      },
+      { status: 500 },
+    );
+  }
+
   const ext = extensionForMime(mimeType);
   const storagePath = `sessions/${crypto.randomUUID()}.${ext}`;
 
-  const { data, error } = await getSupabaseAdmin()
-    .storage.from(RECORDINGS_BUCKET)
+  const { data, error } = await admin.storage
+    .from(RECORDINGS_BUCKET)
     .createSignedUploadUrl(storagePath);
 
   if (error || !data) {
+    // Pull a list of visible buckets to help diagnose
+    const { data: buckets, error: listErr } = await admin.storage.listBuckets();
     return NextResponse.json(
-      { error: error?.message ?? "Could not create signed upload URL" },
+      {
+        error: error?.message ?? "Could not create signed upload URL",
+        attemptedBucket: RECORDINGS_BUCKET,
+        attemptedPath: storagePath,
+        rawError: error,
+        visibleBuckets: buckets?.map((b) => b.name) ?? null,
+        listBucketsError: listErr?.message ?? null,
+        envPresence,
+      },
       { status: 500 },
     );
   }
