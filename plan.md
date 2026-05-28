@@ -122,6 +122,37 @@ A milestone-sequenced plan for shipping Cadence v1. The principle is **end-to-en
 
 **Estimated effort:** 2–3 weekends — auth alone is a chunk, and the RLS/data-model migration deserves care.
 
+### M5.5 — Background analysis queue (remove the 2-min cap)
+
+**Deliverable:** Recordings can be any length. The 2-minute cap in the Recorder goes away. Analyses run in the background after stop.
+
+**Why this exists:** Vercel hobby's 60-second function timeout caps the synchronous `/api/analyze` path. A real meeting recording (5–15 min) blows through that. Today's band-aid is a client-side 2:00 cap with a visible "Max 2:00 per session" hint and an auto-stop. That hint is a promise to the user that the constraint is temporary.
+
+**Components:**
+- `analysis_status` enum + `analysis_error` text column on the `sessions` table (or a separate `analysis_jobs` table — TBD). Values: `pending` / `processing` / `completed` / `failed`.
+- `/api/analyze` becomes a two-phase endpoint:
+  - Phase 1 (synchronous, fast): create the session row with `analysis_status = 'pending'`, return `{ sessionId }` immediately
+  - Phase 2 (background): a worker picks up the pending row and runs Whisper + Claude, then writes the transcript + analysis + flips status to `completed`
+- **Worker runtime** — pick one:
+  - **Inngest** (recommended) — dedicated job queue with retries, observability, generous free tier, clean Next.js SDK
+  - Trigger.dev — similar shape, alternative if Inngest's pricing changes
+  - Vercel Cron tick every minute that drains the queue — simplest but adds up-to-60s latency to every analysis
+  - A Fly.io / Render worker polling the queue table — overkill for this scale
+- Client changes:
+  - `/sessions/[id]` becomes status-aware. If `pending`/`processing`, render a "Working" state mirroring the current recorder checklist
+  - Subscribe to Supabase Realtime on the session row for live updates, or fall back to polling every 2s
+  - Recorder removes the 2:00 cap, the timer-format change, the progress bar's urgent state, and the "Max 2:00 per session" hint
+- Failure UX: when `status = 'failed'`, show the error on the session page with a "Re-run analysis" button that re-enqueues
+
+**Success criteria:**
+- A 10-minute recording analyzes successfully end-to-end without any client-side cap
+- Median analysis turnaround is under 90 seconds wall-clock for a 5-minute clip
+- A failed analysis is visible (not silently lost) and recoverable via re-enqueue
+
+**Estimated effort:** 3–4 hours of focused work. The Inngest setup is mostly boilerplate; the schema migration + Realtime subscription pattern is the real work.
+
+**Trigger to pull this in:** Either (a) you find a real friend repeatedly bumping into the 2-min cap, or (b) you're about to ship Cadence beyond friends-and-family. Whichever comes first.
+
 ### M6 — Trends and cross-session recall
 
 **Deliverable:** A weekly view shows your dimension scores over time. The digest can reference trends ("Your conciseness improved 0.6 points over the last three weeks").
