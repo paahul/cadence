@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { AnalysisView } from "@/components/AnalysisView";
+import { PendingAnalysis } from "@/components/PendingAnalysis";
+import { RetryButton } from "@/components/RetryButton";
 import { getMySession } from "@/lib/db";
 import { RECORDINGS_BUCKET, getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getSupabaseServer } from "@/lib/supabase/server";
@@ -29,7 +31,7 @@ async function signedAudioUrl(storagePath: string): Promise<string | null> {
   try {
     const { data, error } = await getSupabaseAdmin()
       .storage.from(RECORDINGS_BUCKET)
-      .createSignedUrl(storagePath, 60 * 60); // 1 hour
+      .createSignedUrl(storagePath, 60 * 60);
     if (error || !data?.signedUrl) return null;
     return data.signedUrl;
   } catch {
@@ -56,6 +58,7 @@ export default async function SessionDetailPage({
   }
 
   const { session, transcript, analysis } = fullSession;
+  const status = session.analysis_status;
   const audioUrl = await signedAudioUrl(session.storage_path);
 
   return (
@@ -93,7 +96,25 @@ export default async function SessionDetailPage({
           </div>
         ) : null}
 
-        {analysis && transcript ? (
+        {status === "pending" || status === "processing" ? (
+          <PendingAnalysis sessionId={id} initialStatus={status} />
+        ) : status === "failed" ? (
+          <div className="flex w-full max-w-md flex-col gap-4 rounded-2xl border border-record bg-record-tint p-5">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-record">
+              Analysis failed
+            </div>
+            <div className="text-sm leading-6 text-ink-2">
+              Something went wrong while analyzing this recording. You can try
+              again — the audio itself was uploaded fine.
+            </div>
+            {session.analysis_error ? (
+              <div className="rounded-md bg-paper px-3 py-2 font-mono text-[11px] leading-5 text-ink-2">
+                {session.analysis_error}
+              </div>
+            ) : null}
+            <RetryButton sessionId={id} />
+          </div>
+        ) : analysis && transcript ? (
           <AnalysisView
             analysis={{ dimensions: analysis.dimensions }}
             transcript={transcript.text}

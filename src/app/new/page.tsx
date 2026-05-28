@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { Recorder } from "@/components/Recorder";
+import { inngestIsConfigured } from "@/lib/inngest";
+
+export const dynamic = "force-dynamic";
 
 export default function NewSessionPage() {
+  const inngestConfigured = inngestIsConfigured();
   return (
     <div className="flex flex-1 flex-col bg-paper">
       <header className="flex items-center justify-between border-b border-line px-6 py-5">
@@ -17,7 +21,7 @@ export default function NewSessionPage() {
         <div className="w-16" aria-hidden />
       </header>
       <main className="flex w-full flex-1 flex-col items-center justify-center px-6 py-12">
-        <Recorder />
+        <Recorder inngestConfigured={inngestConfigured} />
       </main>
     </div>
   );

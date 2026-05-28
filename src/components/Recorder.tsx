@@ -20,7 +20,14 @@ type WakeLockApi = {
   request: (type: "screen") => Promise<WakeLockSentinelLike>;
 };
 
-const MAX_RECORDING_MS = 120_000; // 2 minutes — band-aid for the 60s Vercel function timeout; removed by M7 (background queue)
+// Client-side recording cap.
+// - When the async pipeline is active (Inngest configured), we still set a
+//   generous safety cap so recordings can't run away forever, but the user
+//   experience is unconstrained for any realistic length.
+// - When the synchronous fallback is in play, we keep the tight 2:00 cap
+//   from M6 to stay under the 60s Vercel function timeout.
+const ASYNC_MAX_RECORDING_MS = 15 * 60 * 1000; // 15 minutes
+const SYNC_MAX_RECORDING_MS = 2 * 60 * 1000; // 2 minutes
 const URGENT_WINDOW_MS = 10_000;
 
 function formatDuration(ms: number) {
@@ -91,7 +98,11 @@ function stageIndex(stage: AnalysisStage): number {
   return STAGES.findIndex((s) => s.id === stage);
 }
 
-export function Recorder() {
+export function Recorder({
+  inngestConfigured = false,
+}: {
+  inngestConfigured?: boolean;
+}) {
   const router = useRouter();
   const [status, setStatus] = useState<Status>("idle");
   const [elapsedMs, setElapsedMs] = useState(0);
@@ -108,6 +119,10 @@ export function Recorder() {
   const finalDurationRef = useRef<number>(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const stageTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const maxRecordingMs = inngestConfigured
+    ? ASYNC_MAX_RECORDING_MS
+    : SYNC_MAX_RECORDING_MS;
 
   const acquireWakeLock = useCallback(async () => {
     const wakeLock = (navigator as Navigator & { wakeLock?: WakeLockApi })
@@ -172,9 +187,8 @@ export function Recorder() {
       timerRef.current = setInterval(() => {
         const now = Date.now() - startTimeRef.current;
         setElapsedMs(now);
-        // Auto-stop at the cap
         if (
-          now >= MAX_RECORDING_MS &&
+          now >= maxRecordingMs &&
           mediaRecorderRef.current?.state === "recording"
         ) {
           setAutoStopped(true);
@@ -199,11 +213,17 @@ export function Recorder() {
         onUploaded: () => {
           setStatus("analyzing");
           setAnalysisStage("transcribing");
-          stageTimeoutRef.current = setTimeout(() => {
-            setAnalysisStage((prev) =>
-              prev === "transcribing" ? "reading" : prev,
-            );
-          }, 7000);
+          if (!inngestConfigured) {
+            // In the synchronous fallback, we know Whisper finishes inside
+            // the analyze response, so fake the transition. In the async
+            // path, we navigate immediately and let the session page take
+            // over the status story.
+            stageTimeoutRef.current = setTimeout(() => {
+              setAnalysisStage((prev) =>
+                prev === "transcribing" ? "reading" : prev,
+              );
+            }, 7000);
+          }
         },
       });
       router.push(`/sessions/${sessionId}`);
@@ -220,7 +240,7 @@ export function Recorder() {
     if (!mediaRecorderRef.current) return;
     finalDurationRef.current = Math.min(
       Date.now() - startTimeRef.current,
-      MAX_RECORDING_MS,
+      maxRecordingMs,
     );
     if (mediaRecorderRef.current.state !== "inactive") {
       mediaRecorderRef.current.stop();
@@ -243,10 +263,14 @@ export function Recorder() {
   const isRecording = status === "recording";
   const isProcessing = status === "uploading" || status === "analyzing";
   const buttonDisabled = isProcessing;
-  const remainingMs = Math.max(0, MAX_RECORDING_MS - elapsedMs);
+  const remainingMs = Math.max(0, maxRecordingMs - elapsedMs);
   const isUrgent =
     isRecording && remainingMs > 0 && remainingMs <= URGENT_WINDOW_MS;
-  const cappedElapsed = Math.min(elapsedMs, MAX_RECORDING_MS);
+  const cappedElapsed = Math.min(elapsedMs, maxRecordingMs);
+  // Only show the timer-as-fraction format + progress bar when the sync cap
+  // is visibly close (the tight 2-min cap). The 15-min async cap is a
+  // safety net, not a UX constraint, so we don't put it in the user's face.
+  const showCapUx = !inngestConfigured;
 
   return (
     <div className="flex w-full flex-col items-center gap-10">
@@ -293,15 +317,15 @@ export function Recorder() {
             isUrgent ? "text-record" : "text-ink"
           }`}
         >
-          {isRecording
-            ? `${formatDuration(cappedElapsed)} / ${formatDuration(MAX_RECORDING_MS)}`
+          {isRecording && showCapUx
+            ? `${formatDuration(cappedElapsed)} / ${formatDuration(maxRecordingMs)}`
             : formatDuration(cappedElapsed)}
         </div>
 
-        {isRecording ? (
+        {isRecording && showCapUx ? (
           <RecordingProgressBar
             elapsedMs={cappedElapsed}
-            maxMs={MAX_RECORDING_MS}
+            maxMs={maxRecordingMs}
             isUrgent={isUrgent}
           />
         ) : null}
@@ -309,9 +333,11 @@ export function Recorder() {
         {status === "idle" && (
           <>
             <div className="text-sm text-muted">Tap to start</div>
-            <div className="text-xs italic text-faint">
-              Max 2:00 per session
-            </div>
+            {showCapUx ? (
+              <div className="text-xs italic text-faint">
+                Max 2:00 per session
+              </div>
+            ) : null}
           </>
         )}
         {status === "recording" && (
