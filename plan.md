@@ -16,13 +16,13 @@ A milestone-sequenced plan for shipping Cadence v1. The principle is **end-to-en
 | Frontend (PWA) | Next.js (App Router) | Ecosystem fit, easy PWA via manifest |
 | Backend | Same Next.js app — API routes / server actions | One repo, one deploy unit |
 | Hosting | Vercel | Best Next.js host, built-in cron, has blob storage |
-| Database | Postgres on Neon | Generous free tier; pgvector available at M5 |
-| Audio storage | Vercel Blob | No S3 setup; switchable later |
+| Database | Postgres on Supabase | You already use Supabase on Tripsmith — same auth, same client, pgvector available at M5 |
+| Audio storage | Supabase Storage | Same product as the DB; one fewer dashboard and SDK to wrangle |
 | Transcription | OpenAI Whisper API | ~$0.006/min, no infra to run |
 | LLM analysis | Claude API | Strong on rubric/structured judgment |
 | Email | Resend | Modern, simple, free tier sufficient |
 | Queue | Deferred | Synchronous analysis in M1; introduce when timeouts force it |
-| Vector DB | Deferred | Introduce at M5 via pgvector on the same Postgres |
+| Vector DB | Deferred | Introduce at M5 via the pgvector extension on the existing Supabase Postgres |
 
 ## Milestones
 
@@ -33,7 +33,7 @@ A milestone-sequenced plan for shipping Cadence v1. The principle is **end-to-en
 **Components:**
 - PWA shell: Next.js app, manifest, install-to-home-screen, minimal styling
 - Recording UI: tap-start / tap-stop button, Wake Lock active during recording, elapsed timer
-- Audio upload to Vercel Blob via signed URL
+- Audio upload to Supabase Storage via signed URL
 - Transcription: server-side Whisper API call; store transcript text
 - Analysis: server-side Claude call with the Word Precision rubric; return structured JSON (score 1–5, reasoning, 2–3 quoted examples)
 - Result view: score + confidence label + reasoning + quoted examples
@@ -71,7 +71,7 @@ A milestone-sequenced plan for shipping Cadence v1. The principle is **end-to-en
 **Deliverable:** Sessions persist. You can see a list of past sessions and revisit any of them.
 
 **Components:**
-- Neon Postgres + Drizzle (or Prisma) ORM
+- Supabase Postgres with the typed `@supabase/supabase-js` client (matches your Tripsmith pattern — no new ORM to learn)
 - Schema: `users`, `sessions`, `transcripts`, `analyses`
 - Session list view (latest first) + session detail view
 - Single-user hardcoded — no login flow yet
@@ -108,7 +108,7 @@ A milestone-sequenced plan for shipping Cadence v1. The principle is **end-to-en
 **Deliverable:** A weekly view shows your dimension scores over time. The digest can reference trends ("Your conciseness improved 0.6 points over the last three weeks").
 
 **Components:**
-- `pgvector` extension on the existing Neon Postgres
+- `pgvector` extension enabled on the existing Supabase Postgres
 - Per-session embedding stored for semantic recall ("sessions where you hedged a lot")
 - Trend computation: rolling average per dimension over a configurable window
 - Weekly view: sparklines per dimension
@@ -156,12 +156,12 @@ This is explicitly v2 work. The v1 placeholder: surface low-Whisper-confidence w
 
 ## Open decisions before starting M1
 
-1. **API accounts to create:**
-   - OpenAI (Whisper)
-   - Anthropic (Claude)
-   - Vercel (hosting + cron + Blob)
-   - Neon (Postgres)
-   - Resend (email — deferrable until M4)
+1. **API accounts:**
+   - OpenAI (Whisper) — *new*
+   - Anthropic (Claude) — already in use on Tripsmith
+   - Vercel (hosting + cron) — create a new project for Cadence
+   - Supabase (Postgres + Storage) — already in use on Tripsmith; create a new project for Cadence
+   - Resend (email, deferrable until M4) — already in use on Tripsmith
 2. **Domain** — start with `cadence-<something>.vercel.app`; custom domain is optional and can come later
 3. **Spending budget** — set a monthly cap. Personal usage of Whisper + Claude should be well under $10/month at expected volume
 4. **Repo structure** — single Next.js app at repo root for now; refactor only if there's a clear reason
