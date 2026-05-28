@@ -21,7 +21,7 @@ const newsreader = Newsreader({
 
 const SITE_URL = "https://cadence.paahulhq.com";
 const DESCRIPTION =
-  "A speaking coach that listens to how you communicate and tells you, specifically, what to work on next. Clarity, conciseness, confidence, word precision — scored from your own voice, with a daily read each weekday morning.";
+  "A speaking coach that listens to how you communicate and tells you, specifically, what to work on next. Six dimensions — clarity, conciseness, confidence, word precision, pace, pronunciation clarity — scored from your own voice, with a daily read each weekday morning.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

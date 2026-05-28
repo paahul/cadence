@@ -18,13 +18,15 @@ export default function SignInPage() {
           <p className="mt-2 text-[15px] leading-7 text-ink-2">
             Tap to start when you begin talking — a meeting, a pitch, a
             practice run. Cadence transcribes the audio and scores you on
-            four dimensions of communication:
+            six dimensions of communication:
           </p>
           <ul className="mt-1 flex flex-col gap-1 text-[14px] leading-6 text-ink-2">
             <li>· <span className="text-ink">Clarity</span> — could a listener restate your point?</li>
             <li>· <span className="text-ink">Conciseness</span> — did you use the right number of words?</li>
             <li>· <span className="text-ink">Confidence</span> — did your language commit to a position?</li>
             <li>· <span className="text-ink">Word precision</span> — did you reach for the specific word?</li>
+            <li>· <span className="text-ink">Pace</span> — were you in the natural speaking range?</li>
+            <li>· <span className="text-ink">Pronunciation clarity</span> — could a listener catch every word?</li>
           </ul>
           <p className="mt-3 text-[15px] leading-7 text-ink-2">
             Every weekday morning you get a short email with one specific

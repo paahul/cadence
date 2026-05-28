@@ -2,7 +2,7 @@
 
 A personal speaking coach that lives in your pocket.
 
-Tap to start when you begin speaking — a meeting, a pitch, a practice run. Tap to stop. Cadence transcribes the audio, scores it across four dimensions of communication, and emails you a short read every weekday morning with one specific thing to focus on next.
+Tap to start when you begin speaking — a meeting, a pitch, a practice run. Tap to stop. Cadence transcribes the audio, scores it across six dimensions of communication, and emails you a short read every weekday morning with one specific thing to focus on next.
 
 Try it: **[cadence-five-delta.vercel.app](https://cadence-five-delta.vercel.app)**
 
@@ -10,14 +10,16 @@ Try it: **[cadence-five-delta.vercel.app](https://cadence-five-delta.vercel.app)
 
 ## What it does
 
-Cadence listens to how you actually communicate and gives you objective, specific feedback on four dimensions of high-stakes spoken communication:
+Cadence listens to how you actually communicate and gives you objective, specific feedback on six dimensions of high-stakes spoken communication:
 
-| Dimension | What it asks |
-|---|---|
-| **Clarity** | Could a listener restate your main point in one sentence? |
-| **Conciseness** | Did you use roughly the right number of words for the idea? |
-| **Confidence** | Did your language commit to a position, or did it hedge? |
-| **Word precision** | Did you reach for the specific word, or settle for a vague one? |
+| Dimension | What it asks | Signal source |
+|---|---|---|
+| **Clarity** | Could a listener restate your main point in one sentence? | Transcript |
+| **Conciseness** | Did you use roughly the right number of words for the idea? | Transcript |
+| **Confidence** | Did your language commit to a position, or did it hedge? | Transcript |
+| **Word precision** | Did you reach for the specific word, or settle for a vague one? | Transcript |
+| **Pace** | Were you in the natural speaking range, and did you pause where it mattered? | Whisper word timestamps |
+| **Pronunciation clarity** | Could a listener catch every word, or would they have to work? | Whisper per-segment confidence |
 
 Each session gets a 1–5 score per dimension with a short coaching paragraph and two or three **verbatim quoted examples** pulled directly from your own speech.
 

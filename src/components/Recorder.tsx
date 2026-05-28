@@ -84,7 +84,7 @@ async function uploadAndAnalyze(
 const STAGES: { id: AnalysisStage; label: string }[] = [
   { id: "uploading", label: "Uploading audio" },
   { id: "transcribing", label: "Transcribing what you said" },
-  { id: "reading", label: "Reading your speech across four dimensions" },
+  { id: "reading", label: "Reading your speech across six dimensions" },
 ];
 
 function stageIndex(stage: AnalysisStage): number {

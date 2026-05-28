@@ -156,7 +156,7 @@ export default async function Home() {
             </h2>
             <p className="max-w-sm text-[14px] leading-7 text-ink-2">
               Tap <span className="font-medium text-ink">+ New</span> and talk
-              for a minute. Cadence will transcribe, score you on four
+              for a minute. Cadence will transcribe, score you on six
               dimensions, and email you a short daily read.
             </p>
           </div>
