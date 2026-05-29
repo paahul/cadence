@@ -16,17 +16,27 @@ function formatDuration(ms: number | null): string {
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
+// Server components run on Vercel in UTC by default. Pin display to ET so
+// times match what Paahul actually recorded at. Becomes a per-user pref
+// once more users than just Paahul exist.
+const DISPLAY_TZ = "America/New_York";
+
 function formatTimeShort(iso: string): string {
   const date = new Date(iso);
   return date.toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",
+    timeZone: DISPLAY_TZ,
   });
 }
 
 function formatDateShort(iso: string): string {
   const date = new Date(iso);
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: DISPLAY_TZ,
+  });
 }
 
 function pickFocusFromAnalysis(dims: AnalysisResult["dimensions"]) {
@@ -43,15 +53,21 @@ function pickFocusFromAnalysis(dims: AnalysisResult["dimensions"]) {
 
 type GroupKey = "today" | "yesterday" | "thisWeek" | "earlier";
 
+// "YYYY-MM-DD" representation of `date` in the display timezone. Used so
+// that "today" / "yesterday" grouping uses ET calendar days, not the
+// Vercel-server-default UTC calendar days (otherwise a session recorded
+// at 8pm ET shows under Yesterday between 7pm-midnight ET).
+function etDayKey(date: Date): string {
+  return date.toLocaleDateString("en-CA", { timeZone: DISPLAY_TZ });
+}
+
 function groupForSession(iso: string, now: Date): GroupKey {
-  const date = new Date(iso);
-  const startOfDay = (d: Date) =>
-    new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  const today = startOfDay(now);
-  const sessionDay = startOfDay(date);
-  const diffDays = Math.round(
-    (today.getTime() - sessionDay.getTime()) / (24 * 60 * 60 * 1000),
-  );
+  const todayKey = etDayKey(now);
+  const sessionKey = etDayKey(new Date(iso));
+  // Parse keys as UTC midnight just for arithmetic — only the day-delta matters.
+  const todayMs = new Date(todayKey + "T00:00:00Z").getTime();
+  const sessionMs = new Date(sessionKey + "T00:00:00Z").getTime();
+  const diffDays = Math.round((todayMs - sessionMs) / (24 * 60 * 60 * 1000));
   if (diffDays <= 0) return "today";
   if (diffDays === 1) return "yesterday";
   if (diffDays < 7) return "thisWeek";

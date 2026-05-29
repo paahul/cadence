@@ -17,6 +17,11 @@ function formatDuration(ms: number | null): string {
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
+// Server components run on Vercel in UTC by default — pin display to ET
+// so session timestamps match when Paahul actually recorded them. Will
+// become a per-user preference once more users exist.
+const DISPLAY_TZ = "America/New_York";
+
 function formatFullDate(iso: string): string {
   const date = new Date(iso);
   return date.toLocaleString("en-US", {
@@ -24,6 +29,7 @@ function formatFullDate(iso: string): string {
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
+    timeZone: DISPLAY_TZ,
   });
 }
 
