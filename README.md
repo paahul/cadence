@@ -4,7 +4,7 @@ A personal speaking coach that lives in your pocket.
 
 Tap to start when you begin speaking — a meeting, a pitch, a practice run. Tap to stop. Cadence transcribes the audio, scores it across six dimensions of communication, and emails you a short read every weekday morning with one specific thing to focus on next.
 
-Try it: **[cadence-five-delta.vercel.app](https://cadence-five-delta.vercel.app)**
+Try it: **[cadence-five-delta.vercel.app](https://cadence.paahulhq.com)**
 
 ---
 
