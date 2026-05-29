@@ -97,7 +97,11 @@ export default async function SessionDetailPage({
         ) : null}
 
         {status === "pending" || status === "processing" ? (
-          <PendingAnalysis sessionId={id} initialStatus={status} />
+          <PendingAnalysis
+            sessionId={id}
+            initialStatus={status}
+            durationMs={session.duration_ms}
+          />
         ) : status === "failed" ? (
           <div className="flex w-full max-w-md flex-col gap-4 rounded-2xl border border-record bg-record-tint p-5">
             <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-record">
