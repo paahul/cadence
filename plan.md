@@ -148,7 +148,7 @@ A milestone-sequenced plan for shipping Cadence v1. The principle is **end-to-en
 
 **Why this comes before M7 (queue):** The queue is invisible to the user; the new audio dimensions are immediately visible. Friend feedback was about the *product*, not the constraint. Ship product value first.
 
-### M7 — Background analysis queue (remove the 2-min cap)
+### M7 — Background analysis queue (remove the 2-min cap) ✅ Shipped
 
 **Deliverable:** Recordings can be any length. The 2-minute cap in the Recorder goes away. Analyses run in the background after stop.
 
@@ -178,6 +178,12 @@ A milestone-sequenced plan for shipping Cadence v1. The principle is **end-to-en
 **Estimated effort:** 3–4 hours of focused work. The Inngest setup is mostly boilerplate; the schema migration + Realtime subscription pattern is the real work.
 
 **Trigger to pull this in:** Either (a) you find a real friend repeatedly bumping into the 2-min cap, or (b) you're about to ship Cadence beyond friends-and-family. Whichever comes first.
+
+**Gotchas learned shipping this:**
+- **The Vercel-Inngest integration's auto-sync uses per-deploy URLs**, not the canonical custom domain. Per-deploy URLs (e.g. `cadence-abc123-paahul-s-projects.vercel.app`) have Vercel Deployment Protection on by default, which 401s Inngest's sync `PUT`. The failed syncs show up in Inngest's dashboard under "Unattached syncs" with the misleading message "could not reach your URL" — but the URL is fine, the protection layer is the problem.
+- **Fix: manually sync the app from the Inngest dashboard pointing at the canonical URL** (`https://cadence.paahulhq.com/api/inngest`). The custom domain doesn't have deployment protection. Manual sync becomes the source of truth.
+- **Inngest's `serve()` handler returns `{"message": "Unauthorized"}` on unauthenticated GET requests in production mode.** This is correct/expected behavior, not a bug. Don't waste 15 minutes thinking the handler is broken because a browser visit returns Unauthorized — it's locked down by design.
+- **The `inngest` npm package's `createFunction` signature changed**: the trigger now lives inside the first config argument as a `triggers` array, not as a separate second argument. Old docs showing `createFunction(config, { event: "..." }, handler)` are stale; the current signature is `createFunction({ id, triggers: [{ event: "..." }], ... }, handler)`.
 
 ### M8 — Audio signal processing (Intonation, Vocal Energy, Expressive Range)
 
