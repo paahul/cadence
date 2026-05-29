@@ -4,7 +4,7 @@ A personal speaking coach that lives in your pocket.
 
 Tap to start when you begin speaking — a meeting, a pitch, a practice run. Tap to stop. Cadence transcribes the audio, scores it across six dimensions of communication, and emails you a short read every weekday morning with one specific thing to focus on next.
 
-Try it: **[cadence-five-delta.vercel.app](https://cadence.paahulhq.com)**
+Try it: **[cadence.paahulhq.com](https://cadence.paahulhq.com)**
 
 ---
 
@@ -82,9 +82,8 @@ The thinking behind these choices, including the rubric anchors and the technica
 | Analysis | Claude Sonnet 4.6, structured JSON output validated with Zod |
 | Email | Resend, custom `paahulhq.com` domain |
 | Cron | Vercel Cron Jobs (weekday 12:00 UTC) |
+| Background jobs | Inngest (added in M7 — lifts Whisper + Claude off the synchronous request path so recordings can be any length) |
 | Hosting | Vercel |
-
-No queues yet — analysis runs synchronously inside the request. A background job pattern is the next infrastructure primitive to introduce when long recordings start to time out.
 
 ---
 
@@ -98,7 +97,7 @@ cp .env.example .env.local   # fill in your own keys
 npm run dev
 ```
 
-You'll need accounts at: OpenAI, Anthropic, Supabase, Resend (free tiers cover personal usage). Then run the two SQL migrations in `supabase/migrations/` against your Supabase project's SQL editor.
+You'll need accounts at: OpenAI, Anthropic, Supabase, Resend, and Inngest (free tiers cover personal usage). Then run the SQL migrations in `supabase/migrations/` against your Supabase project's SQL editor, in numeric order.
 
 The `.env.example` file documents every variable Cadence reads. The cron endpoint authenticates via a `CRON_SECRET` Bearer header.
 
