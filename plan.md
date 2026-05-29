@@ -216,7 +216,36 @@ A milestone-sequenced plan for shipping Cadence v1. The principle is **end-to-en
 **Explicitly NOT in this milestone — and not planned at all:**
 - Phoneme-level pronunciation analysis comparing the speaker to native references. That goes against the calibrated-honesty positioning (Cadence is not about sounding native), and pulls the product into research territory. The Pronunciation Clarity dimension from M6 covers what's defensibly measurable; we stop there.
 
-### M9 — Trends and cross-session recall
+### M9 — Rubric evals (regression detection)
+
+**Deliverable:** A small, runnable eval harness that catches rubric regressions across all six dimensions. Sits alongside the existing Tripsmith eval pattern but tuned to Cadence's needs.
+
+**Why this exists:** The Claude rubric prompt is the entire product. Six dimensions × scoring anchors × example-extraction rules × structured output schema all in one call. Without evals, prompt drift is invisible until a real user notices a regression — which on a coaching product means broken trust. Evals are how we hold the calibrated-honesty line as the rubric grows.
+
+**Why this comes *after* M8 and *before* M10:** M8 adds three more dimensions to the rubric, expanding the surface area for regression. M9 wraps the by-then 9-dimension prompt in regression detection before we touch it again for M10's lower-confidence work. Evals locked in before tuning is right; locked in before the prompt is stable is premature.
+
+**Trigger to pull this in:** Either (a) you've accumulated 15+ real recordings to ground-truth against, (b) you're about to ship a meaningful prompt change and want regression detection, or (c) Anthropic releases a new model and you want to compare swap-out impact. Don't build before any of these are true — you'd be locking in an unverified baseline.
+
+**Components:**
+- **Eval set on cached production data.** Pull 15–25 real `transcripts` + `audio_metrics` rows from the Supabase DB. *Skip re-running Whisper* — already paid for, deterministic, makes evals ~10× cheaper. Ground truth lives in a JSON sidecar file (per-session per-dimension scores hand-labeled by Paahul, with brief notes).
+- **Re-runner script.** Reads the cached transcript + audio metrics for each eval session, runs the *current* rubric prompt through Claude, captures the output.
+- **Agreement metric.** For each dimension, computes whether the model's score is within ±1 of the ground-truth score. Roll up to per-dimension accuracy and overall accuracy.
+- **Output:** a single agreement number + per-dimension breakdown. Watch it drift downward over commits.
+- **Cost guardrail.** ~20 sessions × ~$0.03 Claude = ~$0.60 per run. Trivial. But cap iterations during prompt tuning to avoid runaway costs.
+
+**The Tripsmith pattern transfers, with two adaptations:**
+1. Pull from DB instead of fixture files — real production data, not fabricated samples.
+2. Score against Paahul's own judgments, not Sonnet-as-judge. Sonnet-as-judge is fine for *mechanical* checks (is every quote verbatim?) but not for "is the Clarity score right" — that requires taste.
+
+**Success criteria:**
+- Eval runs in under 90 seconds end-to-end
+- A deliberately-bad prompt change drops the agreement metric by at least 5%
+- A no-op refactor of the prompt produces zero metric movement
+- The harness is one `npm run eval` command, no manual setup
+
+**Estimated effort:** ~1 weekend total. The harness is small; the time sink is hand-labeling 15–25 sessions (the only step Paahul can do himself — figure ~30 min of focused scoring).
+
+### M10 — Trends and cross-session recall
 
 **Deliverable:** A weekly view shows your dimension scores over time. The digest can reference trends ("Your conciseness improved 0.6 points over the last three weeks").
 
@@ -233,7 +262,7 @@ A milestone-sequenced plan for shipping Cadence v1. The principle is **end-to-en
 
 **Estimated effort:** 1–2 weekends.
 
-### M10 — Lower-confidence dimensions (Tone Fit + Composure)
+### M11 — Lower-confidence dimensions (Tone Fit + Composure)
 
 **Deliverable:** Tone Fit, Composure, plus the N/A logic. Each ships with explicit calibrated-honesty UI.
 
