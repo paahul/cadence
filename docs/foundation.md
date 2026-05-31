@@ -209,6 +209,8 @@ It can't just be a marketing line — it has to be baked into how the product wo
 
 5. **One "high-confidence headline" in every digest.** Something like: *"Of the things I can measure most reliably, your weakest dimension today was X — here's the example."* The reader immediately knows which feedback to weight most.
 
+6. **The score is calibrated; the delivery voice is tunable.** These are two independent axes and must never be collapsed. The *score* reflects an honest read against the rubric and is never softened to be likable — softening it is exactly "the trap to avoid" below. The *coaching prose* that explains the score can flex in register (blunt vs. encouraging) without changing a single number. A 2/5 phrased as "this meandered and never landed" and a 2/5 phrased as "the point is in here — it took ~40s to surface; lead with it next time" are equally honest. This separation is what lets Cadence meet a demotivated user with a gentler voice while still refusing to lie about where they stand. (Operationalized as the coaching-tone setting; see `plan.md`.)
+
 ### The trap to avoid
 
 Transparency only earns retention if the product is **genuinely sharper than competitors on the four dimensions Cadence can measure well.** The honesty earns trust; the depth earns retention. Both have to land. If we lean on "we're honest about our limits" without delivering substantively better feedback on Clarity, Conciseness, Confidence, and Word precision, the framing reads as an excuse.
@@ -241,7 +243,8 @@ Before any pipeline work, **score 3+ real recordings against the rubric manually
 
 ### Product decisions still to make
 
-- **Session-type tagging UX** — required at capture or auto-inferred? Required affects friction at the moment of recording.
+- **Session-type tagging UX** — ~~required at capture or auto-inferred?~~ **Resolved:** optional at capture with a `general` default, editable after the fact — protects the tap-and-talk gesture. Pulled out of M11 into its own milestone (M12) since it makes *every* dimension's read context-aware, not just the two that strictly require it. See `plan.md`.
+- **Coaching tone** — should feedback delivery be tunable? **Resolved:** yes, a global `Direct ↔ Encouraging` setting that changes prose register only, never scores (see value #6 above). M13.
 - **Pressure-moment detection logic** — heuristic, LLM-judged, or self-reported by the user post-session?
 - **What "trend" means visually** — line chart, sparkline, single-number delta?
 - **Digest delivery time** — when in the morning, and is it a real email or a push notification + in-app surface?

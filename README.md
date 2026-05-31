@@ -52,7 +52,9 @@ The lens is becoming more effective at communication — the single highest-leve
 | **M8** | Audio signal processing — adds Intonation, Vocal Energy, and Expressive Range via a Python worker computing pitch contour + RMS curves (Fly.io) | 🟡 Pending — needs M7 first for processing headroom |
 | **M9** | Rubric evals — regression detection on the six-dimension prompt against hand-labeled ground truth from production sessions | 🟡 Pending — pull when prompt tuning is about to start |
 | **M10** | Trends + cross-session recall — pgvector, weekly view, trend-aware digest | 🟡 Pending — meaningful only after 3+ weeks of data |
-| **M11** | Lower-confidence dimensions (Tone Fit + Composure) with session-type tag + N/A logic | 🟡 Pending |
+| **M11** | Lower-confidence dimensions (Tone Fit + Composure) with N/A logic — consumes the M12 tag | 🟡 Pending |
+| **M12** | Session-type tag at capture — optional one-tap selector that makes every dimension's read context-aware | 🟡 Pending — pulled forward from M11 on user feedback |
+| **M13** | Coaching tone + feedback calibration — global Direct↔Encouraging prose setting (scores never move) + an evals-driven check that the model isn't systematically harsh | 🟡 Pending — needs M9 for the calibration half |
 
 ---
 
