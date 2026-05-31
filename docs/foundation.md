@@ -243,8 +243,8 @@ Before any pipeline work, **score 3+ real recordings against the rubric manually
 
 ### Product decisions still to make
 
-- **Session-type tagging UX** — ~~required at capture or auto-inferred?~~ **Resolved:** optional at capture with a `general` default, editable after the fact — protects the tap-and-talk gesture. Pulled out of M11 into its own milestone (M12) since it makes *every* dimension's read context-aware, not just the two that strictly require it. See `plan.md`.
-- **Coaching tone** — should feedback delivery be tunable? **Resolved:** yes, a global `Direct ↔ Encouraging` setting that changes prose register only, never scores (see value #6 above). M13.
+- **Session-type tagging UX** — ~~required at capture or auto-inferred?~~ **Resolved:** optional at capture with a `general` default, editable after the fact — protects the tap-and-talk gesture. Pulled out of M11 into its own milestone (M8, now first in the pending queue) since it makes *every* dimension's read context-aware, not just the two that strictly require it. See `plan.md`.
+- **Coaching tone** — should feedback delivery be tunable? **Resolved:** yes, a global `Direct ↔ Encouraging` setting that changes prose register only, never scores (see value #6 above). M10.
 - **Pressure-moment detection logic** — heuristic, LLM-judged, or self-reported by the user post-session?
 - **What "trend" means visually** — line chart, sparkline, single-number delta?
 - **Digest delivery time** — when in the morning, and is it a real email or a push notification + in-app surface?

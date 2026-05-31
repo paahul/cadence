@@ -114,7 +114,7 @@ A milestone-sequenced plan for shipping Cadence v1. The principle is **end-to-en
 - **Custom domain in Resend:** verify a real domain (e.g., a subdomain of something Paahul owns), set up SPF/DKIM, swap `onboarding@resend.dev` → `coach@<domain>`. ~10 min of DNS work in the Resend dashboard
 - **Invite flow:** simple — share a sign-up link; whoever clicks creates an account
 
-**Why this milestone now (pulled forward from M8 → M5):** Trends (formerly M5, now M6) need weeks of data to be useful, so they don't lose value by waiting. Multi-user, on the other hand, gates real-world feedback from friends — pulling it forward maximizes the time Cadence is being used by more than one person.
+**Why this milestone was pulled forward (ahead of trends, now M13):** Trends need weeks of data to be useful, so they don't lose value by waiting. Multi-user, on the other hand, gates real-world feedback from friends — pulling it forward maximizes the time Cadence is being used by more than one person.
 
 **Why this milestone exists at all:** Resend's `onboarding@resend.dev` only delivers to the account owner. Moving to a verified domain is the prerequisite for sending email to anyone other than Paahul, which is the prerequisite for inviting friends.
 
@@ -185,11 +185,112 @@ A milestone-sequenced plan for shipping Cadence v1. The principle is **end-to-en
 - **Inngest's `serve()` handler returns `{"message": "Unauthorized"}` on unauthenticated GET requests in production mode.** This is correct/expected behavior, not a bug. Don't waste 15 minutes thinking the handler is broken because a browser visit returns Unauthorized — it's locked down by design.
 - **The `inngest` npm package's `createFunction` signature changed**: the trigger now lives inside the first config argument as a `triggers` array, not as a separate second argument. Old docs showing `createFunction(config, { event: "..." }, handler)` are stale; the current signature is `createFunction({ id, triggers: [{ event: "..." }], ... }, handler)`.
 
-### M8 — Audio signal processing (Intonation, Vocal Energy, Expressive Range)
+### M8 — Session-type tag at capture
+
+**Deliverable:** An optional one-tap session-type selector at record time. The tag is stored on the session and passed into the rubric prompt as context, so analysis stops being context-blind.
+
+**Why this is first in the pending queue:** Pulled forward out of M11 on the back of live user feedback. Today every session is graded against the same implicit bar, so a casual debrief reads as harshly as a board update. The tag makes *every* dimension's judgment context-aware — not just Tone Fit and Composure, which strictly require it (see `docs/foundation.md` §2.4, §2.6). It's the cheapest item left in the backlog and improves perceived fairness immediately, so it leads.
+
+**Components:**
+- `session_type` column on `sessions` — nullable, default `'general'`. Suggested values: `general` / `1:1` / `meeting` / `interview` / `presentation` / `practice` / `casual`
+- Capture UI: a small chip row / segmented control on `/new`, pre-set to the default. **Skippable — never blocks the tap-and-talk gesture** (resolved UX decision: optional with default, not required, not a blocking modal)
+- Editable after the fact on the session detail page (so a misremembered tag is one tap to fix)
+- Rubric prompt: pass the session type as context so anchors flex by setting (e.g. the conciseness bar for a casual debrief differs from an exec update)
+
+**Success criteria:**
+- Tagging adds at most one tap and is fully skippable — recording still starts in one gesture
+- The same transcript tagged `casual` vs `presentation` yields appropriately different context-sensitive feedback
+- Existing sessions (pre-migration) default cleanly to `general` with no breakage
+
+**Estimated effort:** ~half a weekend. One column + migration, a capture-UI control, an edit affordance, and a prompt context line. No infra.
+
+**Unblocks:** M11 (Tone Fit + Composure both consume this tag).
+
+### M9 — Rubric evals (regression detection)
+
+**Deliverable:** A small, runnable eval harness that catches rubric regressions across all six dimensions. Sits alongside the existing Tripsmith eval pattern but tuned to Cadence's needs.
+
+**Why this exists:** The Claude rubric prompt is the entire product. Six dimensions × scoring anchors × example-extraction rules × structured output schema all in one call. Without evals, prompt drift is invisible until a real user notices a regression — which on a coaching product means broken trust. Evals are how we hold the calibrated-honesty line as the rubric grows.
+
+**Why this comes second (right after M8, before M10):** The next milestone (M10) rewrites the coaching prompt and may re-tune scoring — exactly the kind of change that needs regression detection in place first. Evals are also the instrument that tells M10's two failure modes apart (harsh *delivery* vs. miscalibrated *scores*). Lock evals in before that prompt work; the harness then gets re-run as the later milestones that expand the rubric land (M11's two dimensions, M12's three audio dimensions).
+
+**Trigger to pull this in:** Either (a) you've accumulated 15+ real recordings to ground-truth against, (b) you're about to ship a meaningful prompt change and want regression detection, or (c) Anthropic releases a new model and you want to compare swap-out impact. Don't build before any of these are true — you'd be locking in an unverified baseline.
+
+> **Now triggered (May 2026).** Live user feedback that the analysis reads as *harsh* satisfies trigger (b): the fix involves a coaching-prompt rewrite (M10), and we need evals to first determine whether the harshness is *delivery* (prose tone) or *calibration* (the model scoring systematically below a fair human). M9 is the instrument that tells those two apart, so it leads M10.
+
+**Components:**
+- **Eval set on cached production data.** Pull 15–25 real `transcripts` + `audio_metrics` rows from the Supabase DB. *Skip re-running Whisper* — already paid for, deterministic, makes evals ~10× cheaper. Ground truth lives in a JSON sidecar file (per-session per-dimension scores hand-labeled by Paahul, with brief notes).
+- **Re-runner script.** Reads the cached transcript + audio metrics for each eval session, runs the *current* rubric prompt through Claude, captures the output.
+- **Agreement metric.** For each dimension, computes whether the model's score is within ±1 of the ground-truth score. Roll up to per-dimension accuracy and overall accuracy.
+- **Output:** a single agreement number + per-dimension breakdown. Watch it drift downward over commits.
+- **Cost guardrail.** ~20 sessions × ~$0.03 Claude = ~$0.60 per run. Trivial. But cap iterations during prompt tuning to avoid runaway costs.
+
+**The Tripsmith pattern transfers, with two adaptations:**
+1. Pull from DB instead of fixture files — real production data, not fabricated samples.
+2. Score against Paahul's own judgments, not Sonnet-as-judge. Sonnet-as-judge is fine for *mechanical* checks (is every quote verbatim?) but not for "is the Clarity score right" — that requires taste.
+
+**Success criteria:**
+- Eval runs in under 90 seconds end-to-end
+- A deliberately-bad prompt change drops the agreement metric by at least 5%
+- A no-op refactor of the prompt produces zero metric movement
+- The harness is one `npm run eval` command, no manual setup
+
+**Estimated effort:** ~1 weekend total. The harness is small; the time sink is hand-labeling 15–25 sessions (the only step Paahul can do himself — figure ~30 min of focused scoring).
+
+### M10 — Coaching tone + feedback calibration
+
+**Deliverable:** Two related changes that address feedback reading as *harsh* — kept as separate axes so the calibrated-honesty positioning stays intact.
+
+1. **Coaching tone** — a global `Direct ↔ Encouraging` setting (default `balanced`) that changes only the *prose register* of the coaching paragraphs and the digest's "one thing to focus on" framing. **Scores never move.**
+2. **Calibration check** — use the M9 eval harness to verify the model isn't systematically scoring *below* a fair human baseline. If it is, that's a calibration bug fixed in the rubric anchors — a different problem from delivery tone.
+
+**The governing principle** (codified in `docs/foundation.md` §4, value #6): the score is calibrated and never softened to be likable; only the delivery voice is tunable. Softening scores to be nice is the exact trap the product exists to avoid.
+
+**Why this exists:** Live feedback that the analysis is harsh enough to potentially demotivate some users. "Harsh" decomposes into two fixable-but-different problems — cold *delivery* (a prose issue) and scores that are too *low* (a calibration issue) — and the user wasn't sure which it is. This milestone tackles both without collapsing them into "just be nicer."
+
+**Why this comes third (right after M9):** It depends on the eval harness. The diagnosis step below can't run without M9, and the calibration half is meaningless without it — so M9 must land first.
+
+**Components:**
+- **Diagnosis first.** Hand-label 3–4 recent real sessions, run them through M9's evals, and see whether the disagreement lives in the *scores* or only in the *framing*. This decides how much of part 2 is actually needed. (This is why M9 leads this milestone.)
+- `coaching_tone` user preference (`direct` / `balanced` / `encouraging`), default `balanced`
+- Coaching prompt: a tone directive that shapes only the explanatory prose — explicitly instructed **not** to alter scores, invent praise, or hide a weak dimension
+- If calibration drift is found: adjust rubric anchors, re-validate via evals
+
+**Success criteria:**
+- Switching `Direct → Encouraging` changes wording while leaving every dimension score *identical* on the same transcript
+- Evals confirm score agreement with Paahul's own labels is within ±1 across dimensions (i.e. the model is honest, not just harsh)
+- `Encouraging` mode never invents praise and still names the weakest dimension plainly
+
+**Depends on:** M9 (eval harness) for both halves. The tone-setting half can ship quickly once M9 exists.
+
+**Priority:** High — addresses live user feedback. Sits right behind M9 so it ships as soon as the harness lands.
+
+### M11 — Lower-confidence dimensions (Tone Fit + Composure)
+
+**Deliverable:** Tone Fit, Composure, plus the N/A logic. Each ships with explicit calibrated-honesty UI.
+
+**Components:**
+- Consumes the session-type tag from **M8** (no longer defines it here — the tag was pulled forward because it improves every dimension's read, not just these two)
+- Tone Fit scorer with explicit "limited by context" framing in the UI
+- Composure scorer with N/A logic: only scores sessions tagged `meeting` or `presentation` *and* with a detected pressure moment
+- Pressure-moment detection: LLM-judged on transcript (interruptions, hard questions, pushback)
+- "N/A — this session didn't test this dimension" UI treatment
+
+**Success criteria:**
+- Composure correctly N/A's solo sessions
+- Tone Fit scores feel sensible across at least three different session types
+
+**Depends on:** M8 (session-type tag). After M11 lands, re-run the M9 evals to cover the two new dimensions.
+
+**Estimated effort:** 1–2 weekends.
+
+### M12 — Audio signal processing (Intonation, Vocal Energy, Expressive Range)
 
 **Deliverable:** Three dimensions that come from the audio waveform itself, not from text. The half of the friend feedback that Whisper signals can't reach.
 
 **Why this exists:** Pace and pronunciation are *language-level* signals — they live in what Whisper returns. Intonation, energy, and expressive range live in the *waveform*. A speaker can be perfectly paced and clear-spoken and still deliver everything in a flat monotone or trail off at every sentence-end. Cadence should catch that.
+
+**Why this sits this late:** It's the most infra-heavy item left (a separate Python worker on Fly.io) and addresses a single friend's critique rather than the broad live feedback that pulled M8/M10 forward. It's high-value but not urgent, so it slots behind the cheap context + honesty work.
 
 **Components:**
 - A Python audio-processing worker, running outside Vercel (Fly.io is the cheapest credible host, ~$5/mo) — Vercel's serverless runtime doesn't fit Python signal-processing libs well
@@ -213,43 +314,16 @@ A milestone-sequenced plan for shipping Cadence v1. The principle is **end-to-en
 
 **Estimated effort:** 1–2 weekends. The Fly.io worker setup is the most novel piece; pitch/energy extraction is well-trodden territory in the audio-processing ecosystem.
 
+**After it lands:** Re-run the M9 evals over the now-nine-dimension prompt to catch any regression the three new dimensions introduce.
+
 **Explicitly NOT in this milestone — and not planned at all:**
 - Phoneme-level pronunciation analysis comparing the speaker to native references. That goes against the calibrated-honesty positioning (Cadence is not about sounding native), and pulls the product into research territory. The Pronunciation Clarity dimension from M6 covers what's defensibly measurable; we stop there.
 
-### M9 — Rubric evals (regression detection)
-
-**Deliverable:** A small, runnable eval harness that catches rubric regressions across all six dimensions. Sits alongside the existing Tripsmith eval pattern but tuned to Cadence's needs.
-
-**Why this exists:** The Claude rubric prompt is the entire product. Six dimensions × scoring anchors × example-extraction rules × structured output schema all in one call. Without evals, prompt drift is invisible until a real user notices a regression — which on a coaching product means broken trust. Evals are how we hold the calibrated-honesty line as the rubric grows.
-
-**Why this comes *after* M8 and *before* M10:** M8 adds three more dimensions to the rubric, expanding the surface area for regression. M9 wraps the by-then 9-dimension prompt in regression detection before we touch it again for M10's lower-confidence work. Evals locked in before tuning is right; locked in before the prompt is stable is premature.
-
-**Trigger to pull this in:** Either (a) you've accumulated 15+ real recordings to ground-truth against, (b) you're about to ship a meaningful prompt change and want regression detection, or (c) Anthropic releases a new model and you want to compare swap-out impact. Don't build before any of these are true — you'd be locking in an unverified baseline.
-
-> **Now triggered (May 2026).** Live user feedback that the analysis reads as *harsh* satisfies trigger (b): the fix involves a coaching-prompt rewrite (M13), and we need evals to first determine whether the harshness is *delivery* (prose tone) or *calibration* (the model scoring systematically below a fair human). M9 is the instrument that tells those two apart, so it now leads M13.
-
-**Components:**
-- **Eval set on cached production data.** Pull 15–25 real `transcripts` + `audio_metrics` rows from the Supabase DB. *Skip re-running Whisper* — already paid for, deterministic, makes evals ~10× cheaper. Ground truth lives in a JSON sidecar file (per-session per-dimension scores hand-labeled by Paahul, with brief notes).
-- **Re-runner script.** Reads the cached transcript + audio metrics for each eval session, runs the *current* rubric prompt through Claude, captures the output.
-- **Agreement metric.** For each dimension, computes whether the model's score is within ±1 of the ground-truth score. Roll up to per-dimension accuracy and overall accuracy.
-- **Output:** a single agreement number + per-dimension breakdown. Watch it drift downward over commits.
-- **Cost guardrail.** ~20 sessions × ~$0.03 Claude = ~$0.60 per run. Trivial. But cap iterations during prompt tuning to avoid runaway costs.
-
-**The Tripsmith pattern transfers, with two adaptations:**
-1. Pull from DB instead of fixture files — real production data, not fabricated samples.
-2. Score against Paahul's own judgments, not Sonnet-as-judge. Sonnet-as-judge is fine for *mechanical* checks (is every quote verbatim?) but not for "is the Clarity score right" — that requires taste.
-
-**Success criteria:**
-- Eval runs in under 90 seconds end-to-end
-- A deliberately-bad prompt change drops the agreement metric by at least 5%
-- A no-op refactor of the prompt produces zero metric movement
-- The harness is one `npm run eval` command, no manual setup
-
-**Estimated effort:** ~1 weekend total. The harness is small; the time sink is hand-labeling 15–25 sessions (the only step Paahul can do himself — figure ~30 min of focused scoring).
-
-### M10 — Trends and cross-session recall
+### M13 — Trends and cross-session recall
 
 **Deliverable:** A weekly view shows your dimension scores over time. The digest can reference trends ("Your conciseness improved 0.6 points over the last three weeks").
+
+**Why this is last:** Trends are only meaningful after weeks of accumulated data, so they lose nothing by waiting — and by shipping last, they get to chart all nine dimensions (the full set after M11 + M12) rather than a partial picture.
 
 **Components:**
 - `pgvector` extension enabled on the existing Supabase Postgres
@@ -263,70 +337,6 @@ A milestone-sequenced plan for shipping Cadence v1. The principle is **end-to-en
 - "Show me sessions where I was confident" returns semantically relevant results
 
 **Estimated effort:** 1–2 weekends.
-
-### M11 — Lower-confidence dimensions (Tone Fit + Composure)
-
-**Deliverable:** Tone Fit, Composure, plus the N/A logic. Each ships with explicit calibrated-honesty UI.
-
-**Components:**
-- Consumes the session-type tag from **M12** (no longer defines it here — the tag was pulled forward because it improves every dimension's read, not just these two)
-- Tone Fit scorer with explicit "limited by context" framing in the UI
-- Composure scorer with N/A logic: only scores sessions tagged `meeting` or `presentation` *and* with a detected pressure moment
-- Pressure-moment detection: LLM-judged on transcript (interruptions, hard questions, pushback)
-- "N/A — this session didn't test this dimension" UI treatment
-
-**Success criteria:**
-- Composure correctly N/A's solo sessions
-- Tone Fit scores feel sensible across at least three different session types
-
-**Estimated effort:** 1–2 weekends.
-
-### M12 — Session-type tag at capture
-
-**Deliverable:** An optional one-tap session-type selector at record time. The tag is stored on the session and passed into the rubric prompt as context, so analysis stops being context-blind.
-
-**Why this exists / why now:** Pulled forward out of M11 on the back of live user feedback. Today every session is graded against the same implicit bar, so a casual debrief reads as harshly as a board update. The tag makes *every* dimension's judgment context-aware — not just Tone Fit and Composure, which strictly require it (see `docs/foundation.md` §2.4, §2.6). It's cheap to build and improves perceived fairness immediately, which is why it jumps ahead of M8/M10 in priority despite the higher number.
-
-**Components:**
-- `session_type` column on `sessions` — nullable, default `'general'`. Suggested values: `general` / `1:1` / `meeting` / `interview` / `presentation` / `practice` / `casual`
-- Capture UI: a small chip row / segmented control on `/new`, pre-set to the default. **Skippable — never blocks the tap-and-talk gesture** (resolved UX decision: optional with default, not required, not a blocking modal)
-- Editable after the fact on the session detail page (so a misremembered tag is one tap to fix)
-- Rubric prompt: pass the session type as context so anchors flex by setting (e.g. the conciseness bar for a casual debrief differs from an exec update)
-
-**Success criteria:**
-- Tagging adds at most one tap and is fully skippable — recording still starts in one gesture
-- The same transcript tagged `casual` vs `presentation` yields appropriately different context-sensitive feedback
-- Existing sessions (pre-migration) default cleanly to `general` with no breakage
-
-**Estimated effort:** ~half a weekend. One column + migration, a capture-UI control, an edit affordance, and a prompt context line. No infra.
-
-**Unblocks:** M11 (Tone Fit + Composure both consume this tag).
-
-### M13 — Coaching tone + feedback calibration
-
-**Deliverable:** Two related changes that address feedback reading as *harsh* — kept as separate axes so the calibrated-honesty positioning stays intact.
-
-1. **Coaching tone** — a global `Direct ↔ Encouraging` setting (default `balanced`) that changes only the *prose register* of the coaching paragraphs and the digest's "one thing to focus on" framing. **Scores never move.**
-2. **Calibration check** — use the M9 eval harness to verify the model isn't systematically scoring *below* a fair human baseline. If it is, that's a calibration bug fixed in the rubric anchors — a different problem from delivery tone.
-
-**The governing principle** (codified in `docs/foundation.md` §4, value #6): the score is calibrated and never softened to be likable; only the delivery voice is tunable. Softening scores to be nice is the exact trap the product exists to avoid.
-
-**Why this exists:** Live feedback that the analysis is harsh enough to potentially demotivate some users. "Harsh" decomposes into two fixable-but-different problems — cold *delivery* (a prose issue) and scores that are too *low* (a calibration issue) — and the user wasn't sure which it is. This milestone tackles both without collapsing them into "just be nicer."
-
-**Components:**
-- **Diagnosis first.** Hand-label 3–4 recent real sessions, run them through M9's evals, and see whether the disagreement lives in the *scores* or only in the *framing*. This decides how much of part 2 is actually needed. (This is why M9 now leads M13.)
-- `coaching_tone` user preference (`direct` / `balanced` / `encouraging`), default `balanced`
-- Coaching prompt: a tone directive that shapes only the explanatory prose — explicitly instructed **not** to alter scores, invent praise, or hide a weak dimension
-- If calibration drift is found: adjust rubric anchors, re-validate via evals
-
-**Success criteria:**
-- Switching `Direct → Encouraging` changes wording while leaving every dimension score *identical* on the same transcript
-- Evals confirm score agreement with Paahul's own labels is within ±1 across dimensions (i.e. the model is honest, not just harsh)
-- `Encouraging` mode never invents praise and still names the weakest dimension plainly
-
-**Depends on:** M9 (eval harness) for the calibration half. The tone-setting half can ship independently and quickly.
-
-**Priority:** High — addresses live user feedback. Ship the tone half fast; the calibration half waits on M9.
 
 ## Explicitly NOT in v1
 
