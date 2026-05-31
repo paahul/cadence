@@ -36,7 +36,7 @@ export default function SignInPage() {
                   {i + 1}
                 </span>
                 <span className="text-[14px] leading-6 text-ink-2">
-                  <span className="font-medium text-ink">{step.label}</span>{" "}
+                  <span className="font-medium text-ink">{step.label}:</span>{" "}
                   {step.rest}
                 </span>
               </li>
