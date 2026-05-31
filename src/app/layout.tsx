@@ -58,6 +58,36 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
+function SiteFooter() {
+  return (
+    <footer className="mt-auto border-t border-line bg-paper-2/60">
+      <div className="mx-auto flex w-full max-w-5xl flex-col items-start justify-between gap-2 px-6 py-4 text-xs text-muted sm:flex-row sm:items-center">
+        <span className="font-[family-name:var(--font-newsreader)] italic">
+          A side project by Paahul Sikand.
+        </span>
+        <div className="flex items-center gap-4">
+          <a
+            href="https://github.com/paahul/cadence"
+            target="_blank"
+            rel="noreferrer"
+            className="transition-colors hover:text-accent"
+          >
+            GitHub
+          </a>
+          <a
+            href="https://www.linkedin.com/in/paahul/"
+            target="_blank"
+            rel="noreferrer"
+            className="transition-colors hover:text-accent"
+          >
+            LinkedIn
+          </a>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -70,6 +100,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-paper text-ink">
         {children}
+        <SiteFooter />
       </body>
     </html>
   );

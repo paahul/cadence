@@ -15,22 +15,37 @@ export default function SignInPage() {
             A speaking coach that<br />
             listens to how you communicate.
           </h1>
-          <p className="mt-2 text-[15px] leading-7 text-ink-2">
-            Tap to start when you begin talking — a meeting, a pitch, a
-            practice run. Cadence transcribes the audio and scores you on
-            six dimensions of communication:
-          </p>
-          <ul className="mt-1 flex flex-col gap-1 text-[14px] leading-6 text-ink-2">
-            <li>· <span className="text-ink">Clarity</span> — could a listener restate your point?</li>
-            <li>· <span className="text-ink">Conciseness</span> — did you use the right number of words?</li>
-            <li>· <span className="text-ink">Confidence</span> — did your language commit to a position?</li>
-            <li>· <span className="text-ink">Word precision</span> — did you reach for the specific word?</li>
-            <li>· <span className="text-ink">Pace</span> — were you in the natural speaking range?</li>
-            <li>· <span className="text-ink">Pronunciation clarity</span> — could a listener catch every word?</li>
-          </ul>
-          <p className="mt-3 text-[15px] leading-7 text-ink-2">
-            Every weekday morning you get a short email with one specific
-            thing to focus on — drawn from your own voice, not generic advice.
+
+          <ol className="mt-4 flex flex-col gap-3.5">
+            {[
+              {
+                label: "Record",
+                rest: "a meeting, a pitch, or a practice run.",
+              },
+              {
+                label: "Get scored",
+                rest: "across six dimensions of how you communicate.",
+              },
+              {
+                label: "Read your digest",
+                rest: "one thing to work on, emailed each weekday morning.",
+              },
+            ].map((step, i) => (
+              <li key={step.label} className="flex items-start gap-3">
+                <span className="mt-[1px] flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent-tint text-[11px] font-semibold text-accent">
+                  {i + 1}
+                </span>
+                <span className="text-[14px] leading-6 text-ink-2">
+                  <span className="font-medium text-ink">{step.label}</span>{" "}
+                  {step.rest}
+                </span>
+              </li>
+            ))}
+          </ol>
+
+          <p className="mt-2 text-[13px] leading-6 text-muted">
+            The six: Clarity · Conciseness · Confidence · Word precision ·
+            Pace · Pronunciation clarity
           </p>
         </div>
 

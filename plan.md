@@ -26,7 +26,7 @@ A milestone-sequenced plan for shipping Cadence v1. The principle is **end-to-en
 
 ## Milestones
 
-### M1 — Single-session loop
+### M1 — Single-session loop ✅ Shipped
 
 **Deliverable:** A working PWA that records audio, uploads it, transcribes it, runs Word Precision analysis, and displays the result.
 
@@ -48,7 +48,7 @@ A milestone-sequenced plan for shipping Cadence v1. The principle is **end-to-en
 - Whisper API latency on long clips → cap M1 recordings at 5 minutes
 - Wake Lock unavailable on older iOS → degrade gracefully with a "keep your screen on" warning
 
-### M2 — Four high-confidence dimensions
+### M2 — Four high-confidence dimensions ✅ Shipped
 
 **Deliverable:** Same loop, but analysis covers Clarity, Conciseness, Confidence, and Word Precision. Result view shows all four with confidence labels.
 
@@ -66,7 +66,7 @@ A milestone-sequenced plan for shipping Cadence v1. The principle is **end-to-en
 **Key risks:**
 - Prompt drift across dimensions → enforce a single shared rubric schema, not per-dimension prompts
 
-### M3 — Persistence and history
+### M3 — Persistence and history ✅ Shipped
 
 **Deliverable:** Sessions persist. You can see a list of past sessions and revisit any of them.
 
@@ -83,7 +83,7 @@ A milestone-sequenced plan for shipping Cadence v1. The principle is **end-to-en
 
 **Estimated effort:** 1 weekend.
 
-### M4 — Daily digest email
+### M4 — Daily digest email ✅ Shipped
 
 **Deliverable:** Every weekday morning, you get an email summarizing yesterday's recordings with the best/worst dimension callouts.
 
@@ -103,7 +103,7 @@ A milestone-sequenced plan for shipping Cadence v1. The principle is **end-to-en
 **Key risks:**
 - Silent cron failure → add a self-ping (e.g., POST to a healthcheck service) inside the cron handler so you find out the same day if it stops firing
 
-### M5 — Open to friends (multi-user + custom domain)
+### M5 — Open to friends (multi-user + custom domain) ✅ Shipped
 
 **Deliverable:** Other people can sign up, record their own sessions, and receive their own daily digest at their own email. Cadence stops being a personal project and becomes shareable.
 
@@ -122,7 +122,7 @@ A milestone-sequenced plan for shipping Cadence v1. The principle is **end-to-en
 
 **Estimated effort:** 2–3 weekends — auth alone is a chunk, and the RLS/data-model migration deserves care.
 
-### M6 — Whisper-derived audio signals (Pace + Pronunciation Clarity)
+### M6 — Whisper-derived audio signals (Pace + Pronunciation Clarity) ✅ Shipped
 
 **Deliverable:** Two new dimensions that finally let Cadence analyze the *speech*, not just the transcript. Addresses real friend feedback that v1 only reads what was said, not how it was said.
 
